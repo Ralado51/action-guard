@@ -1,6 +1,6 @@
 # STATUS
 
-Atualizado em 03/11/2026. Cada ferramenta le este arquivo no inicio de uma sessao e o atualiza ao entregar algo.
+Atualizado em 04/11/2026. Cada ferramenta le este arquivo no inicio de uma sessao e o atualiza ao entregar algo.
 
 Repositorio: https://github.com/Ralado51/action-guard (publico, criado pelo Airton).
 
@@ -21,6 +21,13 @@ Revisao de 04/11: o oraculo foi corrigido e os contratos reforcados (ver `docs/D
 - Defeitos reproduzidos antes da correcao: `OwnerId` ausente nos dois snapshots resultava em `passed`; Case que sumia do snapshot final passava em `no_unexpected_change` e quebrava as verificacoes de campo com `KeyError`.
 - Os testes novos foram validados reintroduzindo os defeitos no oraculo: com `None == None` voltando, 6 testes falham; ignorando registros que sumiram, 5 falham. Oraculo restaurado em seguida.
 - API: `GET /health` responde 200; demais rotas validam o corpo (422) e respondem 501.
+
+## Integracao Salesforce (branch `feat/salesforce-integration-claude`, ainda nao integrada)
+
+- Implementados `connector/` e `orchestrator/` (ver `docs/SALESFORCE_INTEGRATION.md`) e ajustado o contrato (`record_created` com `expected_count`/`match`, `docs/DECISIONS.md` 14 a 17).
+- **159 testes passando** em Python 3.12.3 e 3.13, com Salesforce **simulado**. Os testes novos falham quando se remove o portao de aprovacao ou se introduz retry da mensagem de acao (mutacoes verificadas).
+- **Nada foi executado contra a org real.** Nao e prova de que o conector funciona com a API real.
+- Avisos para Codex: `connector/` agora tem codigo; o motor (`engine/`) deve ser plugado como `evaluator` de `execute_run`.
 
 ## Nao verificado
 

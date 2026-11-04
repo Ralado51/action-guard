@@ -16,10 +16,14 @@
 11. O schema do plano exige, por `kind`, os campos especificos e proibe os alheios; `record_created` define o vinculo por `link_field` == `primary_record.id`.
 12. `primary_record` obrigatorio nos snapshots e `confirmed_absent` (so em `after`) foram acrescentados. Os contratos ainda nao tinham sido distribuidos, entao `schema_version` continua `1.0`.
 13. `validate_snapshot_pair` e `validate_plan_semantics` fazem parte do contrato; o motor as chama e registra os problemas em `limitations`.
+14. (Integracao Salesforce, 04/11) `record_created` ganhou `expected_count` e `match`: o dossie exige exatamente uma Task nova com o Subject esperado, e o contrato antigo aceitava uma ou mais. Duplicata comprovada vence candidato nao observado. Exemplos regenerados (`agentforce_agent_api`, Status inicial `New`, `chk_reason_matches`, cenario `duplicate_tasks`).
+15. A aprovacao vincula o hash do plano, que inclui acao, motivo (`action.input.closure_reason`) e, se informado, `action.input.case_id`. Sem `case_id` no plano, o Case sintetico e criado em tempo de execucao e a precondicao (Case aberto, motivo vazio) impede reutilizar Case ja encerrado.
+16. A mensagem que executa a acao e enviada uma unica vez. Timeout ou 5xx apos o envio = resultado `uncertain`: nao ha retry; o resultado vem dos snapshots e a limitacao exige revisao humana antes de nova tentativa. Nao se promete exactly-once.
+17. A resposta do agente e guardada como registro, nunca entra no calculo do status. Falha ao encerrar a sessao vira limitacao e nao altera o resultado.
 
 ## Pendencias
 
-- **API name do motivo de encerramento na org.** Os exemplos usam `Closure_Reason__c` como nome ilustrativo. Nao assumir `Case.Reason`. Confirmar na org e atualizar `contracts/tools/build_examples.py`, regenerar os exemplos e o Flow.
+- API name do motivo: `Closure_Reason__c` (confirmado no dossie de 04/11; picklist, nao usar `Case.Reason`).
 - Como a Task de acompanhamento e criada (sincrona no Flow ou assincrona) define o valor de `async_window`.
 - Trilha do hackathon (Blast Radius Zero ou Powering the Future of Work) ainda nao confirmada pelo Airton nem validada com os organizadores.
 - Formato exato das chamadas da Agent API e dos escopos do External Client App: nao verificado.

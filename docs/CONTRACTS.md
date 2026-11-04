@@ -11,7 +11,7 @@ O schema exige, por `kind`, os campos abaixo e **proibe** os demais.
 | `field_equals` | Campo do registro principal igual ao esperado depois da acao | `field`, `expected` (pode ser `null`) | `link_field`, `allowed_changes` | objeto monitorado |
 | `field_not_empty` | Campo preenchido depois da acao (`null` e `""` contam como vazio) | `field` | `expected`, `link_field`, `allowed_changes` | objeto monitorado |
 | `field_unchanged` | Campo igual antes e depois | `field` | `expected`, `link_field`, `allowed_changes` | objeto monitorado |
-| `record_created` | Existe registro novo (id ausente do snapshot anterior) cujo `link_field` aponta para o registro principal | `link_field` | `field`, `expected`, `allowed_changes` | objeto monitorado |
+| `record_created` | Existem exatamente `expected_count` registros novos (id ausente do snapshot anterior) cujo `link_field` aponta para o registro principal e que satisfazem `match`. Mais que o esperado = `failed` (duplicata comprovada); candidato novo com campo de vinculo ou de `match` nao coletado = `inconclusive` | `link_field` (opcionais: `expected_count` >= 1, padrao 1; `match`: campo=valor dos registros novos) | `field`, `expected`, `allowed_changes` | objeto monitorado |
 | `no_unexpected_change` | Nenhum campo monitorado mudou fora de `allowed_changes` | `allowed_changes` (pode ser `[]`) | `field`, `expected`, `link_field` | `"*"` |
 
 Verificacoes de campo (`field_*`) sempre miram o **registro principal** (`snapshot.primary_record`, o Case sintetico da execucao). O vinculo de `record_created` e: `link_field` do registro novo == `primary_record.id`.
