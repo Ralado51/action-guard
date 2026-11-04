@@ -52,6 +52,7 @@ Os contratos `1.0` estao liberados para trabalho em paralelo. Mudanca de contrat
 
 ## Pendencias reais
 
+- Preparar a org seguindo `docs/SALESFORCE_SETUP.md` (roteiro; nenhum passo foi executado numa org real ainda).
 - Org Salesforce de testes preparada, External Client App e autenticacao.
 - API name real do motivo de encerramento (ver `docs/DECISIONS.md`).
 - Agentforce acessivel via API; Flow ou acao do cenario criados.
