@@ -222,6 +222,24 @@
               "type": "string",
               "pattern": "^[A-Za-z0-9_]+\\.[A-Za-z0-9_]+$"
             }
+          },
+          "expected_count": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "record_created: quantos registros novos correspondentes devem existir. Padrao 1. Mais do que isso (duplicatas) e falha comprovada."
+          },
+          "match": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean",
+                "null"
+              ]
+            },
+            "description": "record_created: campo -> valor que o registro novo deve ter (ex.: Subject). Os campos precisam estar em monitored."
           }
         },
         "allOf": [
@@ -248,7 +266,9 @@
                   "not": {
                     "const": "*"
                   }
-                }
+                },
+                "expected_count": false,
+                "match": false
               }
             }
           },
@@ -275,7 +295,9 @@
                   "not": {
                     "const": "*"
                   }
-                }
+                },
+                "expected_count": false,
+                "match": false
               }
             }
           },
@@ -302,7 +324,9 @@
                   "not": {
                     "const": "*"
                   }
-                }
+                },
+                "expected_count": false,
+                "match": false
               }
             }
           },
@@ -354,7 +378,9 @@
                 "link_field": false,
                 "object": {
                   "const": "*"
-                }
+                },
+                "expected_count": false,
+                "match": false
               }
             }
           }

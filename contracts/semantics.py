@@ -43,6 +43,8 @@ def validate_plan_semantics(plan: dict[str, Any]) -> list[str]:
         need(c["object"], c.get("field"), where)
         if c["kind"] == "record_created":
             need(c["object"], c["link_field"], f"{where} link_field")
+            for mf in c.get("match", {}):
+                need(c["object"], mf, f"{where} match")
 
     for pre in plan.get("preconditions", []):
         if "object" in pre:

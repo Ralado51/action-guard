@@ -110,3 +110,19 @@ def test_primary_record_is_required(validator):
     s = snap()
     del s["primary_record"]
     assert list(validator("snapshot").iter_errors(s))
+
+
+def test_expected_count_and_match_only_on_record_created(validator):
+    import copy
+    from tests.conftest import EXAMPLES, load
+    plan = load(EXAMPLES / "test_plan_draft.json")
+    v = validator("test_plan")
+    assert not list(v.iter_errors(plan))
+    for cid, extra in (("chk_status_closed", {"expected_count": 1}),
+                       ("chk_reason_filled", {"match": {"Subject": "x"}})):
+        bad = copy.deepcopy(plan)
+        next(c for c in bad["checks"] if c["check_id"] == cid).update(extra)
+        assert list(v.iter_errors(bad)), cid
+    bad = copy.deepcopy(plan)
+    next(c for c in bad["checks"] if c["check_id"] == "chk_followup_task")["expected_count"] = 0
+    assert list(v.iter_errors(bad))

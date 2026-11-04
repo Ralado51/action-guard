@@ -81,10 +81,31 @@ def unexpected_changes(plan, before, after) -> list[dict[str, Any]]:
 
 
 def new_linked_records(check, before, after, primary_id) -> list[str]:
+    """Ids dos registros novos vinculados ao registro principal e que satisfazem `match`."""
     obj, link = check["object"], check["link_field"]
+    match = check.get("match", {})
     old = {r["id"] for r in before["records"].get(obj, [])}
     return [r["id"] for r in after["records"].get(obj, [])
-            if r["id"] not in old and r["fields"].get(link) == primary_id]
+            if r["id"] not in old and r["fields"].get(link) == primary_id
+            and all(k in r["fields"] and r["fields"][k] == v for k, v in match.items())]
+
+
+def _record_created_status(check, before, after, primary_id) -> str:
+    obj, link = check["object"], check["link_field"]
+    match = check.get("match", {})
+    expected = check.get("expected_count", 1)
+    old = {r["id"] for r in before["records"][obj]}
+    new = [r for r in after["records"][obj] if r["id"] not in old]
+    count = len(new_linked_records(check, before, after, primary_id))
+    # Candidatos cuja correspondencia nao da para afirmar (campo de vinculo ou de match nao coletado).
+    unknown = [r for r in new
+               if link not in r["fields"]
+               or (r["fields"][link] == primary_id and any(k not in r["fields"] for k in match))]
+    if count > expected:
+        return "failed"          # duplicata comprovada
+    if unknown:
+        return "inconclusive"    # pode haver mais correspondentes do que o observado
+    return "passed" if count == expected else "failed"
 
 
 def expected_status(check, plan, before, after, case_id: str | None = None) -> str:
@@ -106,13 +127,7 @@ def expected_status(check, plan, before, after, case_id: str | None = None) -> s
         if (obj in _errored(before) | _errored(after)
                 or obj not in before["records"] or obj not in after["records"]):
             return "inconclusive"
-        if new_linked_records(check, before, after, p_id):
-            return "passed"
-        old = {r["id"] for r in before["records"][obj]}
-        new = [r for r in after["records"][obj] if r["id"] not in old]
-        if any(check["link_field"] not in r["fields"] for r in new):
-            return "inconclusive"  # registro novo sem o campo de vinculo coletado
-        return "failed"
+        return _record_created_status(check, before, after, p_id)
 
     if obj != p_obj:
         raise ValueError(f"verificacao de campo precisa mirar o registro principal ({p_obj}), nao {obj}")

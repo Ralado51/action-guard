@@ -14,7 +14,7 @@
       {
         "id": "500SYN000000001AAA",
         "fields": {
-          "Status": "In Progress",
+          "Status": "New",
           "Closure_Reason__c": null,
           "ClosedDate": null,
           "IsClosed": false,

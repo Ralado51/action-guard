@@ -14,7 +14,7 @@
       {
         "id": "500SYN000000001AAA",
         "fields": {
-          "Status": "In Progress",
+          "Status": "New",
           "OwnerId": "005SYN000000001AAA",
           "Closure_Reason__c": null,
           "ClosedDate": null,

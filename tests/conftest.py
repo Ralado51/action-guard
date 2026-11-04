@@ -11,7 +11,7 @@ sys.path.insert(0, str(ROOT))
 CONTRACTS = ROOT / "contracts"
 EXAMPLES = CONTRACTS / "examples"
 SCENARIOS = ["success", "owner_changed", "task_missing", "inconclusive",
-             "evidence_missing", "case_deleted", "case_unconfirmed"]
+             "evidence_missing", "case_deleted", "case_unconfirmed", "duplicate_tasks"]
 
 
 def load(path: Path):

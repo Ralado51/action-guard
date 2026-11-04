@@ -233,3 +233,64 @@ def test_plan_semantics_catches_incoherent_plans(ctx):
     p = copy.deepcopy(plan)
     check_of(p, "chk_followup_task")["link_field"] = "CampoSemMonitorar"
     assert any("link_field" in i for i in validate_plan_semantics(p))
+
+
+# ---- record_created: expected_count / match (dossie Salesforce) ----
+import copy as _copy
+
+from contracts.semantics import validate_plan_semantics as _vps
+from tests.conftest import EXAMPLES as _EX, load as _load
+from tests import oracle as _oracle
+
+
+def _ctx(scn="success"):
+    plan = _load(_EX / "test_plan.json")
+    return plan, _load(_EX / scn / "before.json"), _load(_EX / scn / "after.json")
+
+
+def _followup(plan):
+    return next(c for c in plan["checks"] if c["check_id"] == "chk_followup_task")
+
+
+def test_followup_check_requires_exactly_one_matching_task():
+    plan, b, a = _ctx()
+    chk = _followup(plan)
+    assert chk["expected_count"] == 1 and chk["match"]["Subject"]
+    assert _vps(plan) == []
+    assert _oracle.expected_status(chk, plan, b, a) == "passed"
+
+
+def test_wrong_subject_task_is_failure_not_pass():
+    plan, b, a = _ctx()
+    for r in a["records"]["Task"]:
+        if r["id"].endswith("001AAA"):
+            r["fields"]["Subject"] = "Outro assunto"
+    assert _oracle.expected_status(_followup(plan), plan, b, a) == "failed"
+
+
+def test_duplicate_matching_tasks_fail():
+    plan, b, a = _ctx("duplicate_tasks")
+    assert _oracle.expected_status(_followup(plan), plan, b, a) == "failed"
+
+
+def test_new_task_with_uncollected_subject_is_inconclusive():
+    plan, b, a = _ctx()
+    for r in a["records"]["Task"]:
+        if r["id"].endswith("001AAA"):
+            del r["fields"]["Subject"]
+    assert _oracle.expected_status(_followup(plan), plan, b, a) == "inconclusive"
+
+
+def test_duplicate_wins_over_unknown_candidate():
+    plan, b, a = _ctx("duplicate_tasks")
+    extra = _copy.deepcopy(a["records"]["Task"][-1])
+    extra["id"] = "00TSYN000000009AAA"
+    del extra["fields"]["Subject"]
+    a["records"]["Task"].append(extra)
+    assert _oracle.expected_status(_followup(plan), plan, b, a) == "failed"
+
+
+def test_match_field_must_be_monitored():
+    plan, _, _ = _ctx()
+    _followup(plan)["match"]["Description"] = "x"
+    assert any("match" in i for i in _vps(plan))

@@ -3,10 +3,10 @@
   "run_id": "run-synthetic-success-001",
   "plan_id": "plan-close-case-001",
   "plan_version": 1,
-  "plan_hash": "sha256:2989d784ede20b8bbf12feef1b443d99991a904f6a44468b610e17fcaeba14bc",
-  "executed_via": "flow_direct",
+  "plan_hash": "sha256:52e68cf19831ecfdc309c60b8ef44a2e8569ab93fc2e5f48b8882da85ce5d1c1",
+  "executed_via": "agentforce_agent_api",
   "action": {
-    "identifier": "Close_Case_Flow",
+    "identifier": "Action Guard",
     "started_at": "2026-11-03T18:00:05Z",
     "finished_at": "2026-11-03T18:00:20Z"
   },
@@ -26,7 +26,7 @@
         "fields": [
           "Status"
         ],
-        "before": "In Progress",
+        "before": "New",
         "after": "Closed"
       }
     },
@@ -37,6 +37,23 @@
       "kind": "field_not_empty",
       "status": "passed",
       "reason": "O motivo de encerramento foi preenchido.",
+      "evidence": {
+        "record_ids": [
+          "500SYN000000001AAA"
+        ],
+        "fields": [
+          "Closure_Reason__c"
+        ],
+        "after": "Resolved - Customer confirmed"
+      }
+    },
+    {
+      "schema_version": "1.0",
+      "run_id": "run-synthetic-success-001",
+      "check_id": "chk_reason_matches",
+      "kind": "field_equals",
+      "status": "passed",
+      "reason": "O motivo de encerramento e igual ao informado no plano.",
       "evidence": {
         "record_ids": [
           "500SYN000000001AAA"
@@ -71,7 +88,7 @@
       "check_id": "chk_followup_task",
       "kind": "record_created",
       "status": "passed",
-      "reason": "Uma nova Task foi criada e vinculada ao Case por WhatId.",
+      "reason": "Exatamente uma nova Task com o Subject esperado foi criada e vinculada ao Case por WhatId.",
       "evidence": {
         "record_ids": [
           "00TSYN000000001AAA"
@@ -104,7 +121,7 @@
   "unexpected_changes": [],
   "limitations": [
     "no_unexpected_change cobre somente os registros e campos monitorados pelo plano.",
-    "A acao foi disparada diretamente pelo Flow (flow_direct); isso nao comprova integracao com Agentforce."
+    "A acao foi disparada pelo Agent API do Agentforce; a resposta do agente e narrativa e nao substitui a evidencia dos registros."
   ],
   "containment_events": [],
   "generated_at": "2026-11-03T18:00:45Z"

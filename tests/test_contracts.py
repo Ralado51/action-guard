@@ -76,7 +76,8 @@ def test_expected_overall_outcomes():
     got = {n: load(EXAMPLES / n / "report.json")["status"] for n in SCENARIOS}
     assert got == {"success": "passed", "owner_changed": "failed", "task_missing": "failed",
                    "inconclusive": "inconclusive", "evidence_missing": "inconclusive",
-                   "case_deleted": "failed", "case_unconfirmed": "inconclusive"}
+                   "case_deleted": "failed", "case_unconfirmed": "inconclusive",
+                   "duplicate_tasks": "failed"}
 
 
 @pytest.mark.parametrize("name", SCENARIOS)

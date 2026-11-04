@@ -2,12 +2,12 @@
   "schema_version": "1.0",
   "plan_id": "plan-close-case-001",
   "plan_version": 1,
-  "plan_hash": "sha256:2989d784ede20b8bbf12feef1b443d99991a904f6a44468b610e17fcaeba14bc",
+  "plan_hash": "sha256:52e68cf19831ecfdc309c60b8ef44a2e8569ab93fc2e5f48b8882da85ce5d1c1",
   "rule_id": "rule-close-case-001",
   "approval": {
     "approved_by": "airton",
     "approved_at": "2026-11-03T17:30:00Z",
-    "approved_plan_hash": "sha256:2989d784ede20b8bbf12feef1b443d99991a904f6a44468b610e17fcaeba14bc"
+    "approved_plan_hash": "sha256:52e68cf19831ecfdc309c60b8ef44a2e8569ab93fc2e5f48b8882da85ce5d1c1"
   },
   "preconditions": [
     {
@@ -26,8 +26,8 @@
     }
   ],
   "action": {
-    "executed_via": "flow_direct",
-    "identifier": "Close_Case_Flow",
+    "executed_via": "agentforce_agent_api",
+    "identifier": "Action Guard",
     "input": {
       "closure_reason": "Resolved - Customer confirmed"
     }
@@ -79,6 +79,14 @@
       "field": "Closure_Reason__c"
     },
     {
+      "check_id": "chk_reason_matches",
+      "kind": "field_equals",
+      "description": "O motivo de encerramento e o informado no plano.",
+      "object": "Case",
+      "field": "Closure_Reason__c",
+      "expected": "Resolved - Customer confirmed"
+    },
+    {
       "check_id": "chk_owner_unchanged",
       "kind": "field_unchanged",
       "description": "O proprietario do Case nao mudou.",
@@ -88,9 +96,13 @@
     {
       "check_id": "chk_followup_task",
       "kind": "record_created",
-      "description": "Uma nova Task de acompanhamento foi criada e vinculada ao Case.",
+      "description": "Exatamente uma nova Task de acompanhamento, com o Subject esperado, foi criada e vinculada ao Case.",
       "object": "Task",
-      "link_field": "WhatId"
+      "link_field": "WhatId",
+      "expected_count": 1,
+      "match": {
+        "Subject": "Action Guard - Case closure follow-up"
+      }
     },
     {
       "check_id": "chk_no_unexpected",
