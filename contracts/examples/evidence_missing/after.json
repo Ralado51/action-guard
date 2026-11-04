@@ -1,0 +1,49 @@
+{
+  "schema_version": "1.0",
+  "snapshot_id": "run-synthetic-evidence_missing-001-after",
+  "run_id": "run-synthetic-evidence_missing-001",
+  "phase": "after",
+  "taken_at": "2026-11-03T18:00:40Z",
+  "complete": true,
+  "primary_record": {
+    "object": "Case",
+    "id": "500SYN000000001AAA"
+  },
+  "records": {
+    "Case": [
+      {
+        "id": "500SYN000000001AAA",
+        "fields": {
+          "Status": "Closed",
+          "Closure_Reason__c": "Resolved - Customer confirmed",
+          "ClosedDate": "2026-11-03T18:00:10Z",
+          "IsClosed": true,
+          "Priority": "Medium",
+          "Subject": "Caso sintetico 001"
+        }
+      }
+    ],
+    "Task": [
+      {
+        "id": "00TSYN000000000AAA",
+        "fields": {
+          "Subject": "Contato inicial (sintetico)",
+          "WhatId": "500SYN000000001AAA",
+          "OwnerId": "005SYN000000001AAA",
+          "Status": "Not Started",
+          "CreatedDate": "2026-11-03T17:55:00Z"
+        }
+      },
+      {
+        "id": "00TSYN000000001AAA",
+        "fields": {
+          "Subject": "Follow-up: Caso sintetico 001",
+          "WhatId": "500SYN000000001AAA",
+          "OwnerId": "005SYN000000001AAA",
+          "Status": "Not Started",
+          "CreatedDate": "2026-11-03T18:00:10Z"
+        }
+      }
+    ]
+  }
+}

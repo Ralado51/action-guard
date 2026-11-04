@@ -1,0 +1,104 @@
+{
+  "schema_version": "1.0",
+  "plan_id": "plan-close-case-001",
+  "plan_version": 1,
+  "plan_hash": "sha256:2989d784ede20b8bbf12feef1b443d99991a904f6a44468b610e17fcaeba14bc",
+  "rule_id": "rule-close-case-001",
+  "approval": null,
+  "preconditions": [
+    {
+      "id": "pre_open",
+      "description": "O Case sintetico esta aberto antes da acao.",
+      "object": "Case",
+      "field": "IsClosed",
+      "expected": false
+    },
+    {
+      "id": "pre_reason_empty",
+      "description": "O motivo de encerramento esta vazio antes da acao.",
+      "object": "Case",
+      "field": "Closure_Reason__c",
+      "expected": null
+    }
+  ],
+  "action": {
+    "executed_via": "flow_direct",
+    "identifier": "Close_Case_Flow",
+    "input": {
+      "closure_reason": "Resolved - Customer confirmed"
+    }
+  },
+  "monitored": {
+    "objects": [
+      {
+        "object": "Case",
+        "fields": [
+          "Status",
+          "OwnerId",
+          "Closure_Reason__c",
+          "ClosedDate",
+          "IsClosed",
+          "Priority",
+          "Subject"
+        ]
+      },
+      {
+        "object": "Task",
+        "fields": [
+          "Subject",
+          "WhatId",
+          "OwnerId",
+          "Status",
+          "CreatedDate"
+        ]
+      }
+    ]
+  },
+  "async_window": {
+    "max_wait_seconds": 30,
+    "poll_interval_seconds": 5
+  },
+  "checks": [
+    {
+      "check_id": "chk_status_closed",
+      "kind": "field_equals",
+      "description": "O Case foi encerrado.",
+      "object": "Case",
+      "field": "Status",
+      "expected": "Closed"
+    },
+    {
+      "check_id": "chk_reason_filled",
+      "kind": "field_not_empty",
+      "description": "O motivo de encerramento esta preenchido.",
+      "object": "Case",
+      "field": "Closure_Reason__c"
+    },
+    {
+      "check_id": "chk_owner_unchanged",
+      "kind": "field_unchanged",
+      "description": "O proprietario do Case nao mudou.",
+      "object": "Case",
+      "field": "OwnerId"
+    },
+    {
+      "check_id": "chk_followup_task",
+      "kind": "record_created",
+      "description": "Uma nova Task de acompanhamento foi criada e vinculada ao Case.",
+      "object": "Task",
+      "link_field": "WhatId"
+    },
+    {
+      "check_id": "chk_no_unexpected",
+      "kind": "no_unexpected_change",
+      "description": "Nenhum outro campo monitorado mudou.",
+      "object": "*",
+      "allowed_changes": [
+        "Case.Status",
+        "Case.Closure_Reason__c",
+        "Case.ClosedDate",
+        "Case.IsClosed"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://action-guard.local/contracts/snapshot.schema.json",
+  "title": "Snapshot",
+  "description": "Estado dos registros e campos monitorados em um instante. Cobre somente o que o plano monitora, nunca a org inteira. Nenhum segredo e nenhum dado real.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "snapshot_id",
+    "run_id",
+    "phase",
+    "taken_at",
+    "complete",
+    "primary_record",
+    "records"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "snapshot_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "phase": {
+      "enum": [
+        "before",
+        "after"
+      ]
+    },
+    "taken_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "complete": {
+      "type": "boolean",
+      "description": "False quando alguma coleta falhou (collection_errors obrigatorio); as verificacoes afetadas ficam inconclusivas. True exige coleta sem erros e todos os campos monitorados presentes em cada registro."
+    },
+    "collection_errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "object",
+          "message"
+        ],
+        "properties": {
+          "object": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "records": {
+      "type": "object",
+      "description": "Mapa nome do objeto para lista de registros.",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "fields"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "fields": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    "primary_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "object",
+        "id"
+      ],
+      "description": "Registro principal da execucao (o Case sintetico criado para esta execucao). As verificacoes de campo e o vinculo de record_created se referem a ele.",
+      "properties": {
+        "object": {
+          "type": "string",
+          "minLength": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "confirmed_absent": {
+      "type": "array",
+      "description": "Somente no snapshot posterior. Registros do snapshot anterior cuja ausencia foi CONFIRMADA (ex.: queryAll com IsDeleted = true). Registro ausente de records e de confirmed_absent significa evidencia insuficiente, nunca exclusao.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "object",
+          "id",
+          "basis"
+        ],
+        "properties": {
+          "object": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "basis": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Como a ausencia foi confirmada."
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "complete": {
+            "const": false
+          }
+        },
+        "required": [
+          "complete"
+        ]
+      },
+      "then": {
+        "required": [
+          "collection_errors"
+        ],
+        "properties": {
+          "collection_errors": {
+            "minItems": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "complete": {
+            "const": true
+          }
+        },
+        "required": [
+          "complete"
+        ]
+      },
+      "then": {
+        "properties": {
+          "collection_errors": {
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "phase": {
+            "const": "before"
+          }
+        },
+        "required": [
+          "phase"
+        ]
+      },
+      "then": {
+        "properties": {
+          "confirmed_absent": false
+        }
+      }
+    }
+  ]
+}

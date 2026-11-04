@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "snapshot_id": "run-synthetic-success-001-before",
+  "run_id": "run-synthetic-success-001",
+  "phase": "before",
+  "taken_at": "2026-11-03T18:00:00Z",
+  "complete": true,
+  "primary_record": {
+    "object": "Case",
+    "id": "500SYN000000001AAA"
+  },
+  "records": {
+    "Case": [
+      {
+        "id": "500SYN000000001AAA",
+        "fields": {
+          "Status": "In Progress",
+          "OwnerId": "005SYN000000001AAA",
+          "Closure_Reason__c": null,
+          "ClosedDate": null,
+          "IsClosed": false,
+          "Priority": "Medium",
+          "Subject": "Caso sintetico 001"
+        }
+      }
+    ],
+    "Task": [
+      {
+        "id": "00TSYN000000000AAA",
+        "fields": {
+          "Subject": "Contato inicial (sintetico)",
+          "WhatId": "500SYN000000001AAA",
+          "OwnerId": "005SYN000000001AAA",
+          "Status": "Not Started",
+          "CreatedDate": "2026-11-03T17:55:00Z"
+        }
+      }
+    ]
+  }
+}

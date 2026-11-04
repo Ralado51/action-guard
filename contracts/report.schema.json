@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://action-guard.local/contracts/report.schema.json",
+  "title": "Report",
+  "description": "Relatorio de uma execucao. status e failed se qualquer verificacao falhou; inconclusive se nenhuma falhou mas alguma ficou inconclusiva; passed somente se todas passaram.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "run_id", "plan_id", "plan_version", "plan_hash", "executed_via", "status", "results", "unexpected_changes", "limitations", "containment_events", "generated_at"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "run_id": {"type": "string", "minLength": 1},
+    "plan_id": {"type": "string", "minLength": 1},
+    "plan_version": {"type": "integer", "minimum": 1},
+    "plan_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "executed_via": {"enum": ["flow_direct", "agentforce_agent_api"]},
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identifier", "started_at", "finished_at"],
+      "properties": {
+        "identifier": {"type": "string"},
+        "started_at": {"type": "string", "format": "date-time"},
+        "finished_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "status": {"enum": ["passed", "failed", "inconclusive"]},
+    "results": {"type": "array", "minItems": 1, "items": {"$ref": "check_result.schema.json"}},
+    "unexpected_changes": {
+      "type": "array",
+      "description": "Somente campos monitorados, fora de allowed_changes.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["object", "record_id", "field", "before", "after"],
+        "properties": {
+          "object": {"type": "string"},
+          "record_id": {"type": "string"},
+          "field": {"type": "string"},
+          "before": {},
+          "after": {}
+        }
+      }
+    },
+    "limitations": {"type": "array", "items": {"type": "string"}},
+    "containment_events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "blocked", "at"],
+        "properties": {
+          "type": {"enum": ["network_attempt", "forbidden_write", "timeout", "resource_limit", "cleanup"]},
+          "detail": {"type": "string"},
+          "blocked": {"type": "boolean"},
+          "at": {"type": "string", "format": "date-time"}
+        }
+      }
+    },
+    "generated_at": {"type": "string", "format": "date-time"}
+  }
+}

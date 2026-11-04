@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0",
+  "rule_id": "rule-close-case-001",
+  "process": "close_case",
+  "text_pt": "Ao encerrar um Case: o motivo de encerramento deve estar preenchido, o proprietario deve permanecer o mesmo e uma Task de acompanhamento deve ser criada e vinculada ao Case.",
+  "created_at": "2026-11-03T17:00:00Z"
+}

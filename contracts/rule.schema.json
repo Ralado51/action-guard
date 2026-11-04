@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://action-guard.local/contracts/rule.schema.json",
+  "title": "Rule",
+  "description": "Regra funcional escrita em linguagem natural, ponto de partida do plano de teste.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "rule_id", "process", "text_pt"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "rule_id": {"type": "string", "minLength": 1},
+    "process": {"enum": ["close_case"]},
+    "text_pt": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string", "format": "date-time"}
+  }
+}

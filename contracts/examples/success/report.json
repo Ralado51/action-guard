@@ -1,0 +1,111 @@
+{
+  "schema_version": "1.0",
+  "run_id": "run-synthetic-success-001",
+  "plan_id": "plan-close-case-001",
+  "plan_version": 1,
+  "plan_hash": "sha256:2989d784ede20b8bbf12feef1b443d99991a904f6a44468b610e17fcaeba14bc",
+  "executed_via": "flow_direct",
+  "action": {
+    "identifier": "Close_Case_Flow",
+    "started_at": "2026-11-03T18:00:05Z",
+    "finished_at": "2026-11-03T18:00:20Z"
+  },
+  "status": "passed",
+  "results": [
+    {
+      "schema_version": "1.0",
+      "run_id": "run-synthetic-success-001",
+      "check_id": "chk_status_closed",
+      "kind": "field_equals",
+      "status": "passed",
+      "reason": "Status mudou para Closed.",
+      "evidence": {
+        "record_ids": [
+          "500SYN000000001AAA"
+        ],
+        "fields": [
+          "Status"
+        ],
+        "before": "In Progress",
+        "after": "Closed"
+      }
+    },
+    {
+      "schema_version": "1.0",
+      "run_id": "run-synthetic-success-001",
+      "check_id": "chk_reason_filled",
+      "kind": "field_not_empty",
+      "status": "passed",
+      "reason": "O motivo de encerramento foi preenchido.",
+      "evidence": {
+        "record_ids": [
+          "500SYN000000001AAA"
+        ],
+        "fields": [
+          "Closure_Reason__c"
+        ],
+        "after": "Resolved - Customer confirmed"
+      }
+    },
+    {
+      "schema_version": "1.0",
+      "run_id": "run-synthetic-success-001",
+      "check_id": "chk_owner_unchanged",
+      "kind": "field_unchanged",
+      "status": "passed",
+      "reason": "OwnerId permaneceu igual.",
+      "evidence": {
+        "record_ids": [
+          "500SYN000000001AAA"
+        ],
+        "fields": [
+          "OwnerId"
+        ],
+        "before": "005SYN000000001AAA",
+        "after": "005SYN000000001AAA"
+      }
+    },
+    {
+      "schema_version": "1.0",
+      "run_id": "run-synthetic-success-001",
+      "check_id": "chk_followup_task",
+      "kind": "record_created",
+      "status": "passed",
+      "reason": "Uma nova Task foi criada e vinculada ao Case por WhatId.",
+      "evidence": {
+        "record_ids": [
+          "00TSYN000000001AAA"
+        ],
+        "fields": [
+          "WhatId"
+        ],
+        "after": "500SYN000000001AAA"
+      }
+    },
+    {
+      "schema_version": "1.0",
+      "run_id": "run-synthetic-success-001",
+      "check_id": "chk_no_unexpected",
+      "kind": "no_unexpected_change",
+      "status": "passed",
+      "reason": "Nenhum campo monitorado mudou fora de allowed_changes.",
+      "evidence": {
+        "record_ids": [
+          "500SYN000000001AAA",
+          "00TSYN000000000AAA"
+        ],
+        "fields": [
+          "Case.*",
+          "Task.*"
+        ]
+      }
+    }
+  ],
+  "unexpected_changes": [],
+  "limitations": [
+    "no_unexpected_change cobre somente os registros e campos monitorados pelo plano.",
+    "A acao foi disparada diretamente pelo Flow (flow_direct); isso nao comprova integracao com Agentforce."
+  ],
+  "containment_events": [],
+  "generated_at": "2026-11-03T18:00:45Z"
+}

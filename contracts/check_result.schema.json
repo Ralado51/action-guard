@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://action-guard.local/contracts/check_result.schema.json",
+  "title": "CheckResult",
+  "description": "Resultado de uma verificacao. Erro de consulta ou evidencia insuficiente e sempre inconclusive, nunca passed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "run_id", "check_id", "kind", "status", "reason", "evidence"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "run_id": {"type": "string", "minLength": 1},
+    "check_id": {"type": "string", "minLength": 1},
+    "kind": {"enum": ["field_equals", "field_not_empty", "field_unchanged", "record_created", "no_unexpected_change"]},
+    "status": {"enum": ["passed", "failed", "inconclusive"]},
+    "reason": {"type": "string", "minLength": 1},
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["record_ids", "fields"],
+      "properties": {
+        "record_ids": {"type": "array", "items": {"type": "string"}},
+        "fields": {"type": "array", "items": {"type": "string"}},
+        "before": {},
+        "after": {}
+      }
+    }
+  }
+}

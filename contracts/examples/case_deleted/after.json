@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "snapshot_id": "run-synthetic-case_deleted-001-after",
+  "run_id": "run-synthetic-case_deleted-001",
+  "phase": "after",
+  "taken_at": "2026-11-03T18:00:40Z",
+  "complete": true,
+  "primary_record": {
+    "object": "Case",
+    "id": "500SYN000000001AAA"
+  },
+  "records": {
+    "Case": [],
+    "Task": [
+      {
+        "id": "00TSYN000000000AAA",
+        "fields": {
+          "Subject": "Contato inicial (sintetico)",
+          "WhatId": "500SYN000000001AAA",
+          "OwnerId": "005SYN000000001AAA",
+          "Status": "Not Started",
+          "CreatedDate": "2026-11-03T17:55:00Z"
+        }
+      }
+    ]
+  },
+  "confirmed_absent": [
+    {
+      "object": "Case",
+      "id": "500SYN000000001AAA",
+      "basis": "queryAll com IsDeleted = true retornou o registro"
+    }
+  ]
+}

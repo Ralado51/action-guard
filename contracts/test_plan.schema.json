@@ -1,0 +1,365 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://action-guard.local/contracts/test_plan.schema.json",
+  "title": "TestPlan",
+  "description": "Plano de teste revisavel. A aprovacao vale somente para o plan_hash aprovado; qualquer edicao gera novo hash e invalida a aprovacao anterior.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "plan_id",
+    "plan_version",
+    "plan_hash",
+    "rule_id",
+    "action",
+    "monitored",
+    "async_window",
+    "checks"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "plan_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "plan_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "plan_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "Hash do conteudo do plano, sem o campo approval."
+    },
+    "rule_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "approval": {
+      "description": "Nulo ou ausente enquanto o plano nao foi aprovado.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "approved_by",
+            "approved_at",
+            "approved_plan_hash"
+          ],
+          "properties": {
+            "approved_by": {
+              "type": "string",
+              "minLength": 1
+            },
+            "approved_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "approved_plan_hash": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            }
+          }
+        }
+      ]
+    },
+    "preconditions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "description"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string"
+          },
+          "field": {
+            "type": "string"
+          },
+          "expected": {}
+        }
+      }
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "executed_via",
+        "identifier"
+      ],
+      "properties": {
+        "executed_via": {
+          "enum": [
+            "flow_direct",
+            "agentforce_agent_api"
+          ],
+          "description": "Como a acao e disparada. flow_direct NAO comprova integracao com Agentforce e deve ser identificado como tal no relatorio."
+        },
+        "identifier": {
+          "type": "string",
+          "minLength": 1,
+          "description": "API name do Flow ou id/nome do agente."
+        },
+        "input": {
+          "type": "object"
+        }
+      }
+    },
+    "monitored": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "objects"
+      ],
+      "properties": {
+        "objects": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "object",
+              "fields"
+            ],
+            "properties": {
+              "object": {
+                "type": "string",
+                "minLength": 1
+              },
+              "fields": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "async_window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_wait_seconds",
+        "poll_interval_seconds"
+      ],
+      "properties": {
+        "max_wait_seconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "poll_interval_seconds": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "check_id",
+          "kind",
+          "description",
+          "object"
+        ],
+        "properties": {
+          "check_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "enum": [
+              "field_equals",
+              "field_not_empty",
+              "field_unchanged",
+              "record_created",
+              "no_unexpected_change"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Objeto verificado. Para no_unexpected_change deve ser \"*\" (todos os objetos monitorados); para os demais, o nome do objeto monitorado."
+          },
+          "field": {
+            "type": "string"
+          },
+          "expected": {
+            "description": "field_equals: valor esperado. Pode ser null (campo vazio)."
+          },
+          "link_field": {
+            "type": "string",
+            "description": "record_created: campo do registro novo que deve apontar para o registro principal da execucao (snapshot.primary_record), por exemplo WhatId da Task apontando para o Case."
+          },
+          "allowed_changes": {
+            "type": "array",
+            "description": "no_unexpected_change: campos que podem mudar sem violar a regra, no formato Objeto.Campo.",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_]+\\.[A-Za-z0-9_]+$"
+            }
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "field_equals"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            "then": {
+              "required": [
+                "field",
+                "expected"
+              ],
+              "properties": {
+                "link_field": false,
+                "allowed_changes": false,
+                "object": {
+                  "not": {
+                    "const": "*"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "field_not_empty"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            "then": {
+              "required": [
+                "field"
+              ],
+              "properties": {
+                "expected": false,
+                "link_field": false,
+                "allowed_changes": false,
+                "object": {
+                  "not": {
+                    "const": "*"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "field_unchanged"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            "then": {
+              "required": [
+                "field"
+              ],
+              "properties": {
+                "expected": false,
+                "link_field": false,
+                "allowed_changes": false,
+                "object": {
+                  "not": {
+                    "const": "*"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "record_created"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            "then": {
+              "required": [
+                "link_field"
+              ],
+              "properties": {
+                "field": false,
+                "expected": false,
+                "allowed_changes": false,
+                "object": {
+                  "not": {
+                    "const": "*"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "no_unexpected_change"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            "then": {
+              "required": [
+                "allowed_changes"
+              ],
+              "properties": {
+                "field": false,
+                "expected": false,
+                "link_field": false,
+                "object": {
+                  "const": "*"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

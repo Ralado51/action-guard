@@ -1,0 +1,113 @@
+{
+  "schema_version": "1.0",
+  "run_id": "run-synthetic-case_deleted-001",
+  "plan_id": "plan-close-case-001",
+  "plan_version": 1,
+  "plan_hash": "sha256:2989d784ede20b8bbf12feef1b443d99991a904f6a44468b610e17fcaeba14bc",
+  "executed_via": "flow_direct",
+  "action": {
+    "identifier": "Close_Case_Flow",
+    "started_at": "2026-11-03T18:00:05Z",
+    "finished_at": "2026-11-03T18:00:20Z"
+  },
+  "status": "failed",
+  "results": [
+    {
+      "schema_version": "1.0",
+      "run_id": "run-synthetic-case_deleted-001",
+      "check_id": "chk_status_closed",
+      "kind": "field_equals",
+      "status": "failed",
+      "reason": "O Case foi excluido (ausencia confirmada por queryAll).",
+      "evidence": {
+        "record_ids": [
+          "500SYN000000001AAA"
+        ],
+        "fields": [
+          "Status"
+        ],
+        "before": "In Progress"
+      }
+    },
+    {
+      "schema_version": "1.0",
+      "run_id": "run-synthetic-case_deleted-001",
+      "check_id": "chk_reason_filled",
+      "kind": "field_not_empty",
+      "status": "failed",
+      "reason": "O Case foi excluido (ausencia confirmada por queryAll).",
+      "evidence": {
+        "record_ids": [
+          "500SYN000000001AAA"
+        ],
+        "fields": [
+          "Closure_Reason__c"
+        ]
+      }
+    },
+    {
+      "schema_version": "1.0",
+      "run_id": "run-synthetic-case_deleted-001",
+      "check_id": "chk_owner_unchanged",
+      "kind": "field_unchanged",
+      "status": "failed",
+      "reason": "O Case foi excluido (ausencia confirmada por queryAll).",
+      "evidence": {
+        "record_ids": [
+          "500SYN000000001AAA"
+        ],
+        "fields": [
+          "OwnerId"
+        ],
+        "before": "005SYN000000001AAA"
+      }
+    },
+    {
+      "schema_version": "1.0",
+      "run_id": "run-synthetic-case_deleted-001",
+      "check_id": "chk_followup_task",
+      "kind": "record_created",
+      "status": "failed",
+      "reason": "Nenhuma Task nova vinculada ao Case apareceu dentro da janela de espera.",
+      "evidence": {
+        "record_ids": [],
+        "fields": [
+          "WhatId"
+        ]
+      }
+    },
+    {
+      "schema_version": "1.0",
+      "run_id": "run-synthetic-case_deleted-001",
+      "check_id": "chk_no_unexpected",
+      "kind": "no_unexpected_change",
+      "status": "failed",
+      "reason": "O Case monitorado foi excluido.",
+      "evidence": {
+        "record_ids": [
+          "500SYN000000001AAA"
+        ],
+        "fields": [
+          "Case.__record__"
+        ],
+        "before": "present",
+        "after": "deleted"
+      }
+    }
+  ],
+  "unexpected_changes": [
+    {
+      "object": "Case",
+      "record_id": "500SYN000000001AAA",
+      "field": "__record__",
+      "before": "present",
+      "after": "deleted"
+    }
+  ],
+  "limitations": [
+    "no_unexpected_change cobre somente os registros e campos monitorados pelo plano.",
+    "A acao foi disparada diretamente pelo Flow (flow_direct); isso nao comprova integracao com Agentforce."
+  ],
+  "containment_events": [],
+  "generated_at": "2026-11-03T18:00:45Z"
+}
