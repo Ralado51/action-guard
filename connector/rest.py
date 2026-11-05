@@ -38,7 +38,9 @@ class SalesforceRest:
             if not isinstance(page, list):
                 raise QueryError("resposta sem lista 'records'")
             records.extend(page)
-            if resp.body.get("done", True):
+            if type(resp.body.get("done")) is not bool:
+                raise QueryError("paginacao incompleta: done ausente ou invalido")
+            if resp.body["done"]:
                 return records
             nxt = resp.body.get("nextRecordsUrl")
             if not nxt:
@@ -62,3 +64,4 @@ def _first_error(body: Any) -> str:
     if isinstance(body, list) and body and isinstance(body[0], dict):
         return f"{body[0].get('errorCode')}: {body[0].get('message')}"
     return "sem detalhe"
+
