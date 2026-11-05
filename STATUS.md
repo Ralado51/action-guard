@@ -111,3 +111,9 @@ Nao confundir infraestrutura pronta com produto funcionando.
 - Hash do rascunho: sha256:c9c8ab2fd8f2c1242266d35e572c20ea97bf86e2e67ff5c90e7fc2a2407460f0.
 - Seis checks gerados e validados; approval=null; nenhum Case vinculado. Metadados explicitamente fixture, nao Salesforce Describe. Nenhuma acao Salesforce executada por este teste.
 - Isto comprova uma geracao real aceita pelo validador, nao confiabilidade geral do modelo nem integracao da rota POST /api/plans.
+
+## Planner com Describe e CLI integrado — 2026-11-05
+
+- Operador informou coleta real por Describe e consultas LIMIT 0: 7 campos Case e 5 Task. Planner real retornou ok=true, metadata_source=salesforce_describe, sem avisos, uma chamada, modelo deepseek-v4.1-flash-1017; 1073 prompt + 634 completion = 1707 tokens. Hash do rascunho informado: sha256:0445be41a8d70ed1f83149916587fd13ce41bf83c693899afd67cfa13854e6f5. Sem Case vinculado ou aprovacao; nenhuma acao executada por esse teste.
+- Novo CLI `python -m orchestrator prepare/run` conecta geracao, vinculo do Case, aprovacao explicita do hash e execute_run. Ver docs/INTEGRATED_CLI.md.
+- 272 testes locais aprovados em Python 3.12.14, com transporte simulado. CLI completo contra servicos reais e Docker desta versao ainda pendentes. Nao confundir com os testes reais separados de planner e executor.
