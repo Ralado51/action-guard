@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://action-guard.local/contracts/audit_report.schema.json",
+  "title": "AuditReport",
+  "description": "Auditoria somente leitura do estado final deixado por um agente, contra um plano aprovado. outcome_rate = correct/evaluated; registros inconclusivos nao contam como corretos.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "audit_id", "generated_at", "plan_id", "plan_version", "plan_hash", "selection", "totals", "outcome_rate", "by_check", "not_auditable", "cases", "cases_truncated", "collection_errors", "limitations", "coverage_status", "summary"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "audit_id": {"type": "string", "minLength": 1},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "plan_id": {"type": "string", "minLength": 1},
+    "plan_version": {"type": "integer", "minimum": 1},
+    "plan_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "selection": {
+      "type": "object", "additionalProperties": false, "required": ["mode", "limit", "since", "filtered_by_user"],
+      "properties": {
+        "mode": {"enum": ["case_ids", "closed_window"]},
+        "limit": {"type": ["integer", "null"], "minimum": 1},
+        "since": {"type": ["string", "null"]},
+        "filtered_by_user": {"type": "boolean"}
+      }
+    },
+    "totals": {
+      "type": "object", "additionalProperties": false, "required": ["evaluated", "correct", "incorrect", "inconclusive"],
+      "properties": {"evaluated": {"type": "integer", "minimum": 0}, "correct": {"type": "integer", "minimum": 0},
+                     "incorrect": {"type": "integer", "minimum": 0}, "inconclusive": {"type": "integer", "minimum": 0}}
+    },
+    "outcome_rate": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "by_check": {
+      "type": "array",
+      "items": {"type": "object", "additionalProperties": false, "required": ["check_id", "description", "passed", "failed", "inconclusive"],
+                "properties": {"check_id": {"type": "string"}, "description": {"type": "string"}, "passed": {"type": "integer", "minimum": 0},
+                               "failed": {"type": "integer", "minimum": 0}, "inconclusive": {"type": "integer", "minimum": 0}}}
+    },
+    "not_auditable": {
+      "type": "array",
+      "items": {"type": "object", "additionalProperties": false, "required": ["check_id", "reason"],
+                "properties": {"check_id": {"type": "string"}, "reason": {"type": "string"}}}
+    },
+    "cases": {
+      "type": "array", "maxItems": 200,
+      "items": {"type": "object", "additionalProperties": false, "required": ["case_id", "status", "failed_checks", "inconclusive_checks", "evidence"],
+                "properties": {"case_id": {"type": "string"}, "status": {"enum": ["incorrect", "inconclusive"]},
+                               "failed_checks": {"type": "array", "items": {"type": "string"}},
+                               "inconclusive_checks": {"type": "array", "items": {"type": "string"}},
+                               "evidence": {"type": "object"}}}
+    },
+    "cases_truncated": {"type": "boolean"},
+    "collection_errors": {"type": "array", "items": {"type": "string"}},
+    "limitations": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "coverage_status": {"enum": ["complete", "partial", "not_assessed"]},
+    "rule_coverage": {"type": "array", "maxItems": 12, "items": {"type": "object"}},
+    "summary": {
+      "type": "object", "additionalProperties": false, "required": ["text", "basis"],
+      "properties": {"text": {"type": "string", "minLength": 1, "maxLength": 700}, "basis": {"enum": ["server", "model"]},
+                     "model": {"type": ["string", "null"]}, "usage": {"type": "object"},
+                     "server_text": {"type": "string"}, "model_error": {"type": "string"}}
+    }
+  }
+}

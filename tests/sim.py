@@ -80,6 +80,16 @@ class FakeSalesforce:
             return self._page(key)
         q = urllib.parse.parse_qs(parsed.query)["q"][0]
         all_ = parsed.path.endswith("/queryAll")
+        if " ORDER BY " in q:                                # janela de auditoria
+            w = re.match(r"SELECT (.+) FROM Case WHERE IsClosed = true AND ClosedDate >= (\S+)"
+                         r"(?: AND LastModifiedById = '([^']+)')? ORDER BY ClosedDate DESC LIMIT (\d+)$", q)
+            assert w, q
+            cols = [f.strip() for f in w.group(1).split(",")]
+            rows = [c for c in self.cases.values() if c.get("IsClosed") is True and (c.get("ClosedDate") or "") >= w.group(2)
+                    and (not w.group(3) or c.get("LastModifiedById") == w.group(3))]
+            rows.sort(key=lambda c: c["ClosedDate"], reverse=True)
+            out = [{"attributes": {"type": "Case"}, **{k: c[k] for k in cols if k in c and k not in self.omit_fields}} for c in rows[:int(w.group(4))]]
+            return Response(200, {"totalSize": len(out), "done": True, "records": out})
         m = re.match(r"SELECT (.+) FROM (\w+) WHERE (\w+) (=|IN) (.+)$", q)
         assert m, q
         fields = [f.strip() for f in m.group(1).split(",")]
@@ -126,10 +136,10 @@ class FakeSalesforce:
         return Response(200, body)
 
     # -- efeitos de negocio --
-    def add_task(self, n=1, subject=SUBJECT):
+    def add_task(self, n=1, subject=SUBJECT, case=None):
         for _ in range(n):
             tid = f"00TSYN{len(self.tasks) + 1:09d}AAA"
-            self.tasks.append({"Id": tid, "Subject": subject, "WhatId": CASE, "OwnerId": OWNER,
+            self.tasks.append({"Id": tid, "Subject": subject, "WhatId": case or CASE, "OwnerId": OWNER,
                                "Status": "Not Started", "CreatedDate": "2026-11-04T19:27:14.000+0000"})
 
 
