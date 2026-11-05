@@ -75,3 +75,10 @@ Nao confundir infraestrutura pronta com produto funcionando.
 - Snapshot anterior com campos monitorados ausentes ou Case principal ausente bloqueia a execucao.
 - REST exige `done` booleano; resposta malformada gera falha de coleta.
 - 171 testes locais passaram em Python 3.12; nenhuma chamada a org real. Docker e avaliador de producao continuam pendentes.
+
+## Motor deterministico — 2026-11-05
+
+- `engine.evaluate` implementado e ligado como padrao de `execute_run`; integracao simulada agora usa o motor real.
+- 197 testes locais passaram em Python 3.12.14, com comparacao ao oraculo independente e validacao de schema dos resultados.
+- Nao houve chamada ao Salesforce. Docker nao instalado neste ambiente; validacao Docker segue pendente na VM.
+- Isto nao implementa o executor isolado de sandbox nem o planner Vultr.
