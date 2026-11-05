@@ -102,3 +102,12 @@ Nao confundir infraestrutura pronta com produto funcionando.
 - Nenhuma acao no Salesforce. `web/` e `docs/API.md` nao foram alterados; rotas seguem 501. O planner ainda nao esta ligado a `POST /api/plans`.
 - Limites: o modelo contribui com monitored/janela/checks extras/descricoes, enquanto o servidor impoe os invariantes; a qualidade da traducao de regras alem do `close_case` nao foi avaliada; prompt e validacao nao foram testados contra o modelo real (comportamento de `finish_reason`, aderencia ao JSON e uso de tokens pendentes).
 - Pendencias: alinhar fluxo de vinculo do Case com a API/Gemini; rodar fumaca real na VM e registrar modelo, hash e tokens; ligar o planner a API.
+
+## Fumaca real Vultr informada pelo operador — 2026-11-05
+
+- Executado `python -m planner` na imagem Docker da VM com chave no ambiente preservado pelo sudo.
+- Resultado fornecido pelo operador: ok=true, calls=1; modelo solicitado e servido deepseek-v4.1-flash-1017.
+- Uso retornado: prompt_tokens=1009, completion_tokens=379, total_tokens=1388. Custo monetario nao medido.
+- Hash do rascunho: sha256:c9c8ab2fd8f2c1242266d35e572c20ea97bf86e2e67ff5c90e7fc2a2407460f0.
+- Seis checks gerados e validados; approval=null; nenhum Case vinculado. Metadados explicitamente fixture, nao Salesforce Describe. Nenhuma acao Salesforce executada por este teste.
+- Isto comprova uma geracao real aceita pelo validador, nao confiabilidade geral do modelo nem integracao da rota POST /api/plans.
