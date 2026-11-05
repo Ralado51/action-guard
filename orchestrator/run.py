@@ -51,7 +51,9 @@ def _gates(plan: dict[str, Any], case_id: str) -> str:
     if not isinstance(reason, str) or not reason.strip():
         raise RunBlocked("action.input.closure_reason ausente ou vazio")
     bound = (action.get("input") or {}).get("case_id")
-    if bound is not None and bound != case_id:
+    if not isinstance(bound, str) or not bound.strip():
+        raise RunBlocked("action.input.case_id obrigatorio antes da aprovacao")
+    if bound != case_id:
         raise RunBlocked("o Case informado difere do Case aprovado no plano")
     return reason
 
@@ -81,6 +83,14 @@ def execute_run(plan: dict[str, Any], *, case_id: str, run_id: str, rest: Salesf
     store.save("before", before)
     if not before["complete"]:
         raise RunBlocked("snapshot anterior incompleto: " + "; ".join(e["message"] for e in before.get("collection_errors", [])))
+    missing = [f"{mon['object']}.{field} em {rec['id']}"
+               for mon in plan["monitored"]["objects"]
+               for rec in before["records"].get(mon["object"], [])
+               for field in mon["fields"] if field not in rec["fields"]]
+    if missing:
+        raise RunBlocked("snapshot anterior com campos nao coletados: " + "; ".join(missing))
+    if not any(r["id"] == case_id for r in before["records"].get("Case", [])):
+        raise RunBlocked("Case aprovado ausente do snapshot anterior")
     problems = _preconditions_ok(plan, before)
     if problems:
         raise RunBlocked("precondicoes nao satisfeitas: " + "; ".join(problems))
@@ -128,3 +138,4 @@ def execute_run(plan: dict[str, Any], *, case_id: str, run_id: str, rest: Salesf
     }
     store.save("report", report)
     return report
+
