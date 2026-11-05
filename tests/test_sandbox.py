@@ -88,3 +88,21 @@ def test_bad_output_never_passes(body):
     def invoke(args,**kw):
         return subprocess.CompletedProcess(args,0,json.dumps(body).encode(),b'')
     with pytest.raises(SandboxError):run({},invoke=invoke)
+
+
+def test_image_preserves_worker_contract_path_layout(tmp_path, monkeypatch):
+    from pathlib import Path
+    from sandbox import worker
+    root = Path(__file__).resolve().parents[1]
+    dockerfile = (root / 'sandbox' / 'Dockerfile').read_text()
+    assert 'COPY sandbox/worker.py /app/sandbox/worker.py' in dockerfile
+    assert '"/app/sandbox/worker.py"' in dockerfile
+    app = tmp_path / 'app'
+    (app / 'sandbox').mkdir(parents=True)
+    import shutil
+    shutil.copytree(root / 'contracts', app / 'contracts')
+    monkeypatch.setattr(worker, '__file__', str(app / 'sandbox' / 'worker.py'))
+    payload = {'plan':load(EXAMPLES/'test_plan.json'),
+               'before':load(EXAMPLES/'success'/'before.json'),
+               'after':load(EXAMPLES/'success'/'after.json')}
+    assert {r['status'] for r in worker.process(payload)['results']} == {'passed'}
