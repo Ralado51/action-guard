@@ -41,7 +41,7 @@ def build(fake, tmp_path, plan=None, run_id="run-sim-001"):
     rest = SalesforceRest(cfg, tok, fake)
     agent = AgentClient(cfg, tok, fake, NOW, key_factory=lambda: "key-1")
     return dict(plan=plan or approved_plan(), case_id=sim.CASE, run_id=run_id, rest=rest, agent=agent,
-                evaluator=sim.oracle_evaluator, store=EvidenceStore(tmp_path, run_id), sleep=lambda s: None, now=NOW)
+                store=EvidenceStore(tmp_path, run_id), sleep=lambda s: None, now=NOW)
 
 
 def run(behavior, tmp_path, configure=None, **over):
