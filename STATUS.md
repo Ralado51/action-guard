@@ -86,3 +86,10 @@ Nao confundir infraestrutura pronta com produto funcionando.
 - Evidencia fornecida pelo operador; nao reexecutada pelo assistente. Salesforce simulado; nenhuma acao real realizada pelo teste Docker.
 - Repeticao sem sudo falhou por permissao no socket; nao invalida a execucao anterior aprovada.
 - Suite local: 197 testes em Python 3.12.14; motor real ligado ao orquestrador. Registros anteriores de 114/159/171 testes representam etapas historicas.
+
+## Integracao real validada pelo operador — 2026-11-05
+
+- Operador executou o conector, orquestrador e motor contra um Case sintetico novo, apos revisar o plano e digitar APROVAR. Resultado informado: passed nas seis verificacoes (Status Closed, motivo preenchido e exato, OwnerId preservado, exatamente uma nova Task vinculada com Subject esperado, nenhuma mudanca inesperada nos campos monitorados).
+- Evidencias JSON geradas na VM em `runs/integrated-<case-id>/`; operador confirmou criacao de `~/action-guard-integrated-evidence.tar.gz`. Arquivo nao foi transferido nem inspecionado pelo assistente; dados da org nao publicados no repositorio.
+- Validacao real relatada pelo operador; nao garante exatamente uma execucao e nao cobre campos/registros fora do plano. Nao reexecutar o Case usado.
+- Planner Vultr, interface e executor isolado continuam pendentes.
