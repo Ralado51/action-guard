@@ -67,3 +67,11 @@ Os contratos `1.0` estao liberados para trabalho em paralelo. Mudanca de contrat
 - Confirmar a trilha do hackathon.
 
 Nao confundir infraestrutura pronta com produto funcionando.
+
+
+## Revisao dos portoes Salesforce — 2026-11-05
+
+- Case ID obrigatorio no plano aprovado; ausencia ou divergencia bloqueia antes da sessao.
+- Snapshot anterior com campos monitorados ausentes ou Case principal ausente bloqueia a execucao.
+- REST exige `done` booleano; resposta malformada gera falha de coleta.
+- 171 testes locais passaram em Python 3.12; nenhuma chamada a org real. Docker e avaliador de producao continuam pendentes.
