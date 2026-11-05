@@ -1,0 +1,59 @@
+# Run from repo root: docker compose -f infra/compose.yaml ...
+name: action-guard
+services:
+  volume-init:
+    image: action-guard-web:local
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    user: "0:0"
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, FOWNER, DAC_OVERRIDE]
+    security_opt: [no-new-privileges:true]
+    command: [python, -c, "import os; os.chown('/data',10001,10001); os.chmod('/data',0o700)"]
+    volumes:
+      - workflow:/data
+    restart: "no"
+  web:
+    image: action-guard-web:local
+    depends_on:
+      volume-init:
+        condition: service_completed_successfully
+    env_file:
+      - ${ACTION_GUARD_ENV_FILE:?Set an absolute path to the private runtime env file}
+    environment:
+      ACTION_GUARD_DATA_DIR: /data
+      SF_METADATA_PATH: /config/metadata.json
+    volumes:
+      - workflow:/data
+      - type: bind
+        source: ${ACTION_GUARD_METADATA_FILE:?Set an absolute path to the metadata JSON}
+        target: /config/metadata.json
+        read_only: true
+        bind:
+          create_host_path: false
+    ports:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
+    mem_limit: 512m
+    cpus: 1
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+volumes:
+  workflow:

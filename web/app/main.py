@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from connector.config import ConfigError
 from planner.errors import PlannerError
 from .service import Workflow, WorkflowError
+from .mode import demo_mode
 
 app = FastAPI(title='Action Guard', version='0.2.0')
 
@@ -139,7 +140,17 @@ def approve(plan_id: str, body: ApprovePlanRequest, svc=Depends(workflow)):
     return invoke(svc.approve, plan_id, body.approved_plan_hash, body.approved_by, body.acknowledged_clauses)
 
 
-@app.post('/api/runs', status_code=202, dependencies=[Depends(authorize)])
+def require_execution():
+    if demo_mode():
+        raise HTTPException(403, 'Modo demonstracao: execucao real desabilitada. Geracao, revisao e auditoria continuam disponiveis.')
+
+
+@app.get('/api/capabilities')
+def capabilities():
+    return {'demo_mode': demo_mode(), 'execution_enabled': not demo_mode()}
+
+
+@app.post('/api/runs', status_code=202, dependencies=[Depends(authorize), Depends(require_execution)])
 def execute(body: ExecuteRunRequest, background: BackgroundTasks, svc=Depends(workflow)):
     run_id = invoke(svc.reserve, body.approved_plan_id, body.expected_plan_hash)
     background.add_task(svc.work, run_id)

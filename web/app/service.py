@@ -22,6 +22,7 @@ from planner import bind_case, create_plan, ready_for_approval
 from planner import policy
 from planner.context import parse_action, parse_metadata
 from planner.service import _validators
+from .mode import demo_mode
 from audit.explain import explain as audit_explain
 from audit.run import AuditBlocked, run_audit
 from planner.client import VultrChatClient
@@ -188,6 +189,8 @@ class Workflow:
         return report
 
     def reserve(self, key, expected_hash):
+        if demo_mode():
+            raise WorkflowError(403, "Modo demonstracao: execucao real desabilitada.")
         # Configuration must be present before a durable reservation is consumed.
         cfg = SalesforceConfig.from_env()
         with self.connect() as db:
@@ -217,6 +220,8 @@ class Workflow:
             record['state'] = 'running'
             self._put(db, 'runs', run_id, record)
         try:
+            if demo_mode():
+                raise RunBlocked('Modo demonstracao: execucao real desabilitada.')
             record['report'] = self.execute(record['plan'], run_id)
             record['state'] = 'completed'
         except Exception as e:
@@ -249,6 +254,8 @@ class Workflow:
             db.execute('UPDATE runs SET target = target || ? WHERE id = ?', ('#released:' + run_id, run_id))
 
     def _execute(self, plan, run_id):
+        if demo_mode():
+            raise RunBlocked("Modo demonstracao: execucao real desabilitada.")
         cfg = SalesforceConfig.from_env()
         transport = UrllibTransport()
         token = get_token(cfg, transport)

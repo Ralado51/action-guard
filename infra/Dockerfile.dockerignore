@@ -1,0 +1,26 @@
+# Production build context: exclude private runtime data and unrelated files.
+**
+!requirements.txt
+!contracts/
+!contracts/**
+!engine/
+!engine/**
+!connector/
+!connector/**
+!orchestrator/
+!orchestrator/**
+!planner/
+!planner/**
+!audit/
+!audit/**
+!web/
+!web/**
+!infra/
+!infra/start.py
+**/__pycache__/
+**/*.pyc
+**/.env
+**/.env.*
+**/*.sqlite3
+**/runs/
+**/tests/
