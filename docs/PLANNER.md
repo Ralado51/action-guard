@@ -53,3 +53,13 @@ python -m planner --rule contracts/examples/rule.json --fixture-metadata \
   --reason "Resolved - Customer confirmed" --subject "Action Guard - Case closure follow-up"
 ```
 Imprime plano, `plan_hash`, modelo, uso de tokens e origem dos metadados. Com `--fixture-metadata` a origem e `fixture`; para metadados reais, passe `--metadata arquivo.json` gerado pelo backend. Nao ha chamada ao Salesforce nem ao agente.
+
+## Cobertura da regra por clausula
+
+Problema: o usuario pode escrever uma exigencia que nenhuma verificacao cobre e ainda receber um relatorio verde. O plano agora traz `rule_coverage`.
+
+- O **servidor** segmenta a regra em clausulas `cl_01..cl_12` (excedente vira ultima clausula, `not_verifiable`). O modelo recebe as clausulas e devolve `coverage` (clause_id, status, check_ids, reason) na mesma chamada: sem custo extra de chamadas.
+- Status: `covered`, `not_verifiable`, `conflicts_with_policy`. Travas do servidor (`planner/coverage.py`): `covered` exige check_ids existentes e vocabulario da clausula compativel com o tema de algum check citado, senao e rebaixada; temas fora do escopo (e-mail, notificacao, SLA, outros objetos) viram `not_verifiable`; padroes como "nao crie tarefa", "motivo opcional", "proprietario pode mudar" viram `conflicts_with_policy`. O modelo nunca promove.
+- Um `check_id` existente **nao prova** cobertura; por isso o conjunto rotulado e o avaliador: `python -m planner.coverage_eval tests/data/rule_coverage_labeled.json --fixture-metadata` mede `false_covered` (perigoso, deve ser 0), `false_uncovered` e `conflict_missed`. Lacunas conhecidas ficam marcadas `known_gap` no conjunto.
+- A cobertura entra no hash; a aprovacao exige confirmacao por clausula; o relatorio traz `coverage_status` (`complete`/`partial`/`not_assessed`) e, se parcial, a primeira limitacao diz quais clausulas ficaram de fora.
+- Limite: cobertura por vocabulario e uma heuristica finita, nao prova semantica. A confirmacao humana e a barreira final.

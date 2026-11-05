@@ -1,128 +1,46 @@
 # STATUS
 
-Atualizado em 05/11/2026. Cada ferramenta le este arquivo no inicio de uma sessao e o atualiza ao entregar algo.
+Atualizado em 05/11/2026 (branch `fix/review-hardening-coverage`). Cada ferramenta le este arquivo no inicio de uma sessao e o atualiza ao entregar algo.
 
-Repositorio: https://github.com/Ralado51/action-guard (publico, criado pelo Airton).
+Repositorio: https://github.com/Ralado51/action-guard (publico). Dados sinteticos apenas; nenhum segredo, dominio de org, Agent ID ou IP no repositorio.
 
-## Decisoes
+## Estado atual
 
-- Produto: **Action Guard**, focado em Salesforce e Agentforce. O risco tecnico da integracao foi aceito; nao trocar automaticamente para Migration Guard diante de dificuldades.
-- MVP: encerrar um Case. Regras: motivo de encerramento preenchido, proprietario mantido, Task de acompanhamento criada e vinculada ao Case (WhatId).
-- A acao deve ser executada pelo Agentforce. Chamar o Flow direto ajuda a desenvolver o nucleo, mas nao comprova integracao com Agentforce e e identificado como `flow_direct`.
-- Fluxo em duas etapas: `create_plan(rule)` e `execute_plan(approved_plan_id)`. Editar o plano invalida a aprovacao.
-- Trilha do hackathon: **nao confirmada.** O plano original marcou Blast Radius Zero; a revisao recomendou Powering the Future of Work. Elegibilidade nao validada com os organizadores.
-- Licenca MIT, somente dados sinteticos, nenhum segredo no repositorio.
+- **Produto:** Action Guard verifica se uma acao executada por um agente Agentforce produziu o resultado de negocio esperado, com evidencia antes/depois, verificacoes deterministicas e plano aprovado por hash. Processo do MVP: somente `close_case`. Nao ampliar para outros processos agora.
+- **Nucleo (manter):** `engine/` (verificacoes deterministicas), `connector/` + `orchestrator/` (execucao unica, sem retry), evidencias e aprovacao por hash.
+- **Planner Vultr:** traduz a regra em plano; o servidor impoe invariantes. Agora tambem declara **cobertura da regra por clausula** (ver `docs/PLANNER.md`): o relatorio diz quais partes da regra NAO sao verificadas. Verde significa "as verificacoes listadas passaram", nao "a regra inteira foi cumprida".
+- **Interface/API (`web/`):** gerar, vincular Case, revisar, confirmar cobertura por clausula, aprovar hash, executar, ver relatorio. Estados de execucao: queued/running/completed/error/**blocked** (nada enviado ao agente).
+- **Sandbox (PR #5, fora desta base):** material de demonstracao/reavaliacao offline opcional. Isola um avaliador fixo sobre dados produzidos pelo backend; nao isola codigo gerado por LLM e nao sustenta "Blast Radius Zero". Integracao automatica adiada.
+- **Trilha do hackathon:** nao confirmada; conferir o regulamento. Comercializacao e hipotese.
 
 ## Verificado (com evidencia)
 
-Revisao de 04/11: o oraculo foi corrigido e os contratos reforcados (ver `docs/DECISIONS.md`, itens 8 a 13).
+- **344 testes passando** em Python 3.12.3 e 3.13, com Salesforce e Vultr **simulados**. Mutacoes verificadas nas travas novas (normalizacao de Id, reserva por 15 caracteres, Task extra, travas de cobertura).
+- Operador, com org real e CLI (registros anteriores a esta branch): plano Vultr com Describe, vinculo de Case, aprovacao por hash, execucao Agentforce, seis verificacoes `passed`; `make docker-test` na VM (197 testes na epoca); fumaca real do planner (deepseek-v4.1-flash-1017, 1 chamada, ~1,4-1,7 mil tokens). Evidencia informada pelo operador, nao reexecutada por mim.
+- Conjunto rotulado de cobertura (`tests/data/rule_coverage_labeled.json`, 20 regras, 33 clausulas): modelo-oraculo simulado acerta 33/33; modelo "otimista" simulado (declara tudo coberto) so produz 2 falsas coberturas, ambas lacunas conhecidas e marcadas `known_gap`.
 
-- **Suite: 114 testes passando**, executados em duas versoes de Python: 3.13 e **3.12.3** (venv novo com `requirements-dev.txt`, Python do sistema). Cobrem schemas, consistencia dos 7 cenarios, oraculo, casos de borda, requisitos condicionais por `kind`, aprovacao do plano, API e varredura de segredos.
-- Defeitos reproduzidos antes da correcao: `OwnerId` ausente nos dois snapshots resultava em `passed`; Case que sumia do snapshot final passava em `no_unexpected_change` e quebrava as verificacoes de campo com `KeyError`.
-- Os testes novos foram validados reintroduzindo os defeitos no oraculo: com `None == None` voltando, 6 testes falham; ignorando registros que sumiram, 5 falham. Oraculo restaurado em seguida.
-- API: `GET /health` responde 200; demais rotas validam o corpo (422) e respondem 501.
+## Nao verificado / limites conhecidos
 
-## Integracao Salesforce (branch `feat/salesforce-integration-claude`, ainda nao integrada)
-
-- Implementados `connector/` e `orchestrator/` (ver `docs/SALESFORCE_INTEGRATION.md`) e ajustado o contrato (`record_created` com `expected_count`/`match`, `docs/DECISIONS.md` 14 a 17).
-- **159 testes passando** em Python 3.12.3 e 3.13, com Salesforce **simulado**. Os testes novos falham quando se remove o portao de aprovacao ou se introduz retry da mensagem de acao (mutacoes verificadas).
-- **Nada foi executado contra a org real.** Nao e prova de que o conector funciona com a API real.
-- Avisos para Codex: `connector/` agora tem codigo; o motor (`engine/`) deve ser plugado como `evaluator` de `execute_run`.
-
-## Nao verificado
-
-- Codigo do conector/orquestrador ainda nao executado contra a org real; testes de integracao usam Salesforce simulado. Docker foi validado pelo operador na VM (ver registro abaixo).
-- Planner, executor isolado e interface publicada continuam pendentes. A integracao Salesforce por scripts separados foi validada pelo operador; isso nao substitui o teste real do conector deste PR.
-
-## Infraestrutura confirmada pelo Airton (nao reverificada aqui)
-
-VM `action-guard-dev` na Vultr (Ubuntu 22.04.5, Docker 29.1.3, UFW ativo), Serverless Inference ativo com chamada VM para a inferencia funcionando. Pendente: confirmar que o Firewall Group esta associado a VM e o tamanho final do disco; remover a regra duplicada de SSH no UFW.
-
-## Contratos liberados
-
-Os contratos `1.0` estao liberados para trabalho em paralelo. Mudanca de contrato: so em `contracts/`, com aprovacao do Airton e aviso aqui.
-
-### Codex
-
-1. `connector/`: autenticacao Salesforce, criar dados sinteticos proprios por execucao, disparar a acao (`flow_direct` primeiro; ponto de extensao para `agentforce_agent_api`), coletar `snapshot.json` antes e depois respeitando `monitored` e `async_window`, preenchendo `primary_record`, todos os campos monitorados, `collection_errors` quando algo falhar e `confirmed_absent` (com `basis`) para exclusoes confirmadas. Modo simulado lendo `contracts/examples/`.
-2. `engine/`: implementar os cinco `kind` de forma deterministica; a saida deve coincidir com `tests/oracle.py` nos sete cenarios de `contracts/examples/`, chamar `validate_plan_semantics` e `validate_snapshot_pair` e registrar os problemas em `limitations`.
-3. `sandbox/`: executor Docker sem rede, usuario nao root, somente leitura, limites, cleanup e testes de contencao. Entrada: `checks`, `before`, `after`. Saida: `check_result[]`.
-
-### Gemini
-
-`web/`: interface contra `docs/API.md`, usando `contracts/examples/` como dados de teste. Etapas: regra, plano revisavel e aprovavel, execucao, relatorio com antes/depois, mudancas inesperadas e eventos de contencao.
-
-### Claude Code
-
-`planner/`: regra em portugues para `test_plan` via Vultr Serverless Inference, com validacao por schema, tentativas limitadas e erro recuperavel; o plano deve usar metadados reais da org e exigir aprovacao.
+- **Nenhuma chamada real a Vultr para cobertura.** A qualidade do modelo real nessa tarefa so existe depois de rodar `python -m planner.coverage_eval tests/data/rule_coverage_labeled.json --fixture-metadata` (ou `--metadata`) na VM. Os testes usam modelo simulado.
+- `make docker-test` desta versao nao foi executado. API/UI atuais nao foram testadas contra a org real nem em navegador real.
+- A cobertura por vocabulario e finita: clausulas com redacao fora do vocabulario conhecido sao rebaixadas (seguro), mas uma clausula sobre algo nao monitorado, redigida com palavras de um check existente, pode ser marcada coberta (lacunas `known_gap`). A confirmacao humana por clausula e a ultima barreira.
+- Escopo monitorado: nada fora do Case e das Tasks vinculadas e observado. Task extra vinculada ao Case que nao case com o esperado gera aviso; Tasks nao vinculadas ao Case nao sao vistas.
+- O polling para no primeiro snapshot em que tudo passa; efeitos tardios depois disso nao sao capturados.
+- O Flow nao e idempotente; `uncertain` exige revisao humana. Reserva so protege o mesmo banco/volume. BackgroundTasks nao e fila duravel.
+- `containment_events` do relatorio ficam vazios sem sandbox.
 
 ## Pendencias reais
 
-- Executar o conector/orquestrador contra Case sintetico novo com plano aprovado; confirmar Subject e motivo completos por dados estruturados.
-- Org, External Client App, OAuth, Agentforce API e Flow ja foram validados pelo operador com scripts separados. Campo real: `Closure_Reason__c`.
-- Executor isolado e aplicacao publica.
-- Confirmar a trilha do hackathon.
+- Rodar a avaliacao de cobertura com o modelo real e registrar resultados (falsa cobertura deve ser 0).
+- Demo: mostrar primeiro a falha real do motivo vazio (exige versao defeituosa do Flow ou flag, e aprovacao explicita para execucao real), depois o fluxo corrigido.
+- Decidir trilha; decidir estrategia de merge (sugestao: consolidar #2-#4 e esta branch, deixar #5 fora).
+- Licenca/titularidade (LICENSE) e questao contratual do Airton.
 
-Nao confundir infraestrutura pronta com produto funcionando.
+## Historico resumido
 
-
-## Revisao dos portoes Salesforce — 2026-11-05
-
-- Case ID obrigatorio no plano aprovado; ausencia ou divergencia bloqueia antes da sessao.
-- Snapshot anterior com campos monitorados ausentes ou Case principal ausente bloqueia a execucao.
-- REST exige `done` booleano; resposta malformada gera falha de coleta.
-- 171 testes locais passaram em Python 3.12; nenhuma chamada a org real. Docker e avaliador de producao continuam pendentes.
-
-## Motor deterministico — 2026-11-05
-
-- `engine.evaluate` implementado e ligado como padrao de `execute_run`; integracao simulada agora usa o motor real.
-- 197 testes locais passaram em Python 3.12.14, com comparacao ao oraculo independente e validacao de schema dos resultados.
-- Nao houve chamada ao Salesforce. Docker nao instalado neste ambiente; validacao Docker segue pendente na VM.
-- Isto nao implementa o executor isolado de sandbox nem o planner Vultr.
-
-## Validacao Docker na VM — 2026-11-05
-
-- Operador executou `sudo make docker-test` na branch `fix/salesforce-execution-gates` e informou `197 passed, 1 warning in 0.74s`.
-- Evidencia fornecida pelo operador; nao reexecutada pelo assistente. Salesforce simulado; nenhuma acao real realizada pelo teste Docker.
-- Repeticao sem sudo falhou por permissao no socket; nao invalida a execucao anterior aprovada.
-- Suite local: 197 testes em Python 3.12.14; motor real ligado ao orquestrador. Registros anteriores de 114/159/171 testes representam etapas historicas.
-
-## Integracao real validada pelo operador — 2026-11-05
-
-- Operador executou o conector, orquestrador e motor contra um Case sintetico novo, apos revisar o plano e digitar APROVAR. Resultado informado: passed nas seis verificacoes (Status Closed, motivo preenchido e exato, OwnerId preservado, exatamente uma nova Task vinculada com Subject esperado, nenhuma mudanca inesperada nos campos monitorados).
-- Evidencias JSON geradas na VM em `runs/integrated-<case-id>/`; operador confirmou criacao de `~/action-guard-integrated-evidence.tar.gz`. Arquivo nao foi transferido nem inspecionado pelo assistente; dados da org nao publicados no repositorio.
-- Validacao real relatada pelo operador; nao garante exatamente uma execucao e nao cobre campos/registros fora do plano. Nao reexecutar o Case usado.
-- Planner Vultr, interface e executor isolado continuam pendentes.
-
-## Planner Vultr — 2026-11-05 (branch `feat/planner-vultr`, base `f20936a`)
-
-- Implementado em `planner/`: cliente Vultr, contextos, montagem/validacao, `create_plan`, `bind_case`, `ready_for_approval` e `python -m planner` (somente gera plano). Documentacao e decisao do vinculo do Case em `docs/PLANNER.md`.
-- **Testes simulados:** 265 passando em Python 3.13 e 3.12.3 (sem rede, sem chave). Mutacoes verificadas: remover o descarte de invariantes contraditorios e ignorar problemas estruturais derrubam testes.
-- **Nao executado:** `make docker-test` (sem daemon Docker no ambiente de autoria). **Nenhuma chamada real a Vultr** foi feita por mim: modelo, tokens e custo reais so existirao apos o operador rodar o teste de fumaca da VM.
-- Nenhuma acao no Salesforce. `web/` e `docs/API.md` nao foram alterados; rotas seguem 501. O planner ainda nao esta ligado a `POST /api/plans`.
-- Limites: o modelo contribui com monitored/janela/checks extras/descricoes, enquanto o servidor impoe os invariantes; a qualidade da traducao de regras alem do `close_case` nao foi avaliada; prompt e validacao nao foram testados contra o modelo real (comportamento de `finish_reason`, aderencia ao JSON e uso de tokens pendentes).
-- Pendencias: alinhar fluxo de vinculo do Case com a API/Gemini; rodar fumaca real na VM e registrar modelo, hash e tokens; ligar o planner a API.
-
-## Fumaca real Vultr informada pelo operador — 2026-11-05
-
-- Executado `python -m planner` na imagem Docker da VM com chave no ambiente preservado pelo sudo.
-- Resultado fornecido pelo operador: ok=true, calls=1; modelo solicitado e servido deepseek-v4.1-flash-1017.
-- Uso retornado: prompt_tokens=1009, completion_tokens=379, total_tokens=1388. Custo monetario nao medido.
-- Hash do rascunho: sha256:c9c8ab2fd8f2c1242266d35e572c20ea97bf86e2e67ff5c90e7fc2a2407460f0.
-- Seis checks gerados e validados; approval=null; nenhum Case vinculado. Metadados explicitamente fixture, nao Salesforce Describe. Nenhuma acao Salesforce executada por este teste.
-- Isto comprova uma geracao real aceita pelo validador, nao confiabilidade geral do modelo nem integracao da rota POST /api/plans.
-
-## Planner com Describe e CLI integrado — 2026-11-05
-
-- Operador informou coleta real por Describe e consultas LIMIT 0: 7 campos Case e 5 Task. Planner real retornou ok=true, metadata_source=salesforce_describe, sem avisos, uma chamada, modelo deepseek-v4.1-flash-1017; 1073 prompt + 634 completion = 1707 tokens. Hash do rascunho informado: sha256:0445be41a8d70ed1f83149916587fd13ce41bf83c693899afd67cfa13854e6f5. Sem Case vinculado ou aprovacao; nenhuma acao executada por esse teste.
-- Novo CLI `python -m orchestrator prepare/run` conecta geracao, vinculo do Case, aprovacao explicita do hash e execute_run. Ver docs/INTEGRATED_CLI.md.
-- 272 testes locais aprovados em Python 3.12.14, com transporte simulado. CLI completo contra servicos reais e Docker desta versao ainda pendentes. Nao confundir com os testes reais separados de planner e executor.
-
-## API e interface assumidas pelo Codex — 2026-11-05
-
-- Instrucao explicita do Airton: seguir sem Gemini. API e interface em web/ implementadas nesta branch; OWNERS.md atualizado.
-- Gerar plano com Vultr, vincular Case fornecido pelo operador, revisar/editar, aprovar hash, executar em background, consultar estado e baixar relatorio. Persistencia SQLite com reserva transacional por org/Case. Token compartilhado da aplicacao, segredos de integracao somente no backend. Ver docs/API.md e docs/WEB_DEMO.md.
-- 276 testes locais passaram em Python 3.12.14; ciclo API com planner/transporte simulados e motor real, concorrencia/replay, aprovacao obsoleta, invariantes, persistencia e erros seguros. JavaScript passou em node --check.
-- Validacao visual em browser nao concluida: Chromium ausente e download falhou. Docker e acao real pela interface ainda nao testados. Nao implantado nem mergeado.
-- Operador forneceu evidencia anterior do CLI completo: plano Vultr com Describe, vinculo antes de aprovacao, execucao Agentforce e seis checks passed; pacote confirmado na VM. Isso nao substitui validacao da API/UI atual.
-- BackgroundTasks nao e fila duravel; interrupcao de queued/running requer reconciliacao manual, sem reenvio automatico. Reserva protege apenas este banco/volume, nao outras maquinas/CLI. Sandbox isolado continua pendente.
+- Revisao dos portoes Salesforce: Case ID obrigatorio, snapshot anterior completo, `done` booleano no REST.
+- Motor deterministico ligado ao orquestrador; validacao Docker na VM (197 testes, informado pelo operador).
+- Integracao real validada pelo operador (seis checks passed em Case sintetico; nao reexecutar esse Case).
+- Planner Vultr, fumaca real, Describe real, CLI integrado `prepare/run`.
+- API/UI assumidas pelo Codex (SQLite, reserva por org/Case).
+- Revisao critica: normalizacao de Ids 15/18, header nao ASCII, erros genericos, aviso de Task extra, estado `blocked`, cobertura da regra (esta branch).

@@ -19,9 +19,9 @@ Variaveis backend: as `SF_*` e `VULTR_INFERENCE_*` de `.env.example`, `ACTION_GU
 | GET /api/plans/{id}/runs | — | estados das execucoes registradas para o plano |
 | PUT /api/plans/{id} | plan, expected_plan_hash | 200 nova versao sem aprovacao |
 | POST /api/plans/{id}/case | case_id, expected_plan_hash | 200 nova versao vinculada, sem aprovacao |
-| POST /api/plans/{id}/approve | approved_by, approved_plan_hash | 200 plano aprovado |
+| POST /api/plans/{id}/approve | approved_by, approved_plan_hash, acknowledged_clauses | 200 plano aprovado |
 | POST /api/runs | approved_plan_id, expected_plan_hash | 202 run_id |
-| GET /api/runs/{id} | — | state queued/running/completed/error; report ou erro seguro |
+| GET /api/runs/{id} | — | state queued/running/completed/error/blocked (blocked = nada enviado ao agente, Case liberado); report ou erro seguro |
 | GET /api/runs/{id}/report | — | 200 report; 409 se indisponivel |
 
 Erros comuns: 404 inexistente; 409 versao desatualizada, falta de Case/aprovacao ou Case ja reservado; 422 corpo/plano invalido; 502 planner recusou geracao; 503 configuracao backend ausente/invalida. Nunca encaminhar excecao bruta do upstream. Invariantes, precondicoes e acao nao podem ser enfraquecidos pela edicao.
@@ -30,7 +30,7 @@ Erros comuns: 404 inexistente; 409 versao desatualizada, falta de Case/aprovacao
 
 1. Backend gera plano com metadados fornecidos pelo servidor e motivo explicito; usuario revisa escopo/checks.
 2. Operador fornece Case sintetico novo criado previamente. Nao ha criacao automatica de Case pela API nesta versao. Vinculo ocorre antes da aprovacao, com novo hash/versao.
-3. Aprovar exige o hash atual e Case vinculado. Editar ou vincular invalida aprovacao.
+3. Aprovar exige o hash atual, Case vinculado e `acknowledged_clauses` igual ao conjunto de `clause_id` de `rule_coverage` (409 se faltar ou sobrar; planos sem cobertura aprovam sem lista). `rule_coverage` nao pode ser editada (422). Editar ou vincular invalida aprovacao.
 4. Executar exige o mesmo hash aprovado; uma transacao SQLite reserva o Case por org e congela o plano da execucao. Outro pedido para o mesmo Case e bloqueado, inclusive com outro plano.
 5. BackgroundTasks executa o orquestrador e grava relatorio; navegador consulta o estado e mostra evidencias antes/depois, com limites do escopo.
 
