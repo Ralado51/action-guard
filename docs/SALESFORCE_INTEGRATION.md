@@ -41,3 +41,7 @@ O executor exige Case ID no plano aprovado e igualdade com o Case da execucao. C
 `engine.evaluate(plan, before, after)` retorna `(check_results, unexpected_changes)`. Implementa field_equals, field_not_empty, field_unchanged, record_created e no_unexpected_change. Resultados incluem IDs, campos e valores observados. Exclusao confirmada difere de desaparecimento sem prova; null difere de campo ausente. Contagem usa IDs novos vinculados e filtros match. Candidato sem campos necessarios impede sucesso; duplicata comprovada falha. Mudanca inesperada comprovada prevalece sobre evidencia insuficiente em outro campo. Identidades/fases incompativeis ou observacoes duplicadas nao estabelecem sucesso. O escopo continua limitado aos registros e campos monitorados.
 
 Validacao local: 197 testes em Python 3.12.14, incluindo comparacao independente com oraculo. Docker nao disponivel no ambiente desta entrega; executar `make docker-test` na VM Vultr apos checkout desta branch. Nenhuma chamada real ao Salesforce nesta entrega.
+
+## Docker validado pelo operador — 2026-11-05
+
+Na VM Vultr, `sudo make docker-test` concluiu com `197 passed, 1 warning in 0.74s`, conforme saida fornecida pelo operador. A suite usa Salesforce simulado; isso valida build e testes no container, nao o conector contra a org real. O comando sem sudo falha por permissao no socket nesse usuario.
