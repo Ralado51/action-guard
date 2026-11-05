@@ -56,6 +56,8 @@
         }
       }
     },
-    "generated_at": {"type": "string", "format": "date-time"}
+    "generated_at": {"type": "string", "format": "date-time"},
+    "rule_coverage": {"description": "Copia da cobertura da regra do plano executado.", "type": "array", "maxItems": 12, "items": {"type": "object", "additionalProperties": false, "required": ["clause_id", "text", "status", "check_ids", "reason", "basis"], "properties": {"clause_id": {"type": "string", "pattern": "^cl_[0-9]{2}$"}, "text": {"type": "string", "minLength": 1, "maxLength": 300}, "status": {"enum": ["covered", "not_verifiable", "conflicts_with_policy"]}, "check_ids": {"type": "array", "items": {"type": "string"}, "maxItems": 4}, "reason": {"type": "string", "maxLength": 300}, "basis": {"enum": ["model", "server_rule"]}}}},
+    "coverage_status": {"enum": ["complete", "partial", "not_assessed"], "description": "complete = toda clausula coberta por verificacao; partial = ha clausula nao verificada ou em conflito. `status` descreve somente as verificacoes do plano."}
   }
 }

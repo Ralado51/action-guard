@@ -142,6 +142,18 @@ def execute_run(plan: dict[str, Any], *, case_id: str, run_id: str, rest: Salesf
     if not after["complete"]:
         limitations.append("Snapshot posterior incompleto: verificacoes dependentes ficam inconclusivas.")
 
+    coverage = copy.deepcopy(plan.get("rule_coverage"))
+    if coverage is None:
+        coverage_status = "not_assessed"
+    elif all(i["status"] == "covered" for i in coverage) and coverage:
+        coverage_status = "complete"
+    else:
+        coverage_status = "partial" if coverage else "not_assessed"
+    if coverage_status == "partial":
+        gaps = [f"{i['clause_id']} ({'conflito' if i['status'] == 'conflicts_with_policy' else 'nao verificada'})"
+                for i in coverage if i["status"] != "covered"]
+        limitations.insert(0, f"COBERTURA PARCIAL: {len(gaps)} de {len(coverage)} clausulas da regra NAO sao verificadas por este plano: "
+                              + ", ".join(gaps) + ". Um resultado 'passed' vale somente para as verificacoes listadas.")
     statuses = {r["status"] for r in results}
     status = "failed" if "failed" in statuses else "inconclusive" if "inconclusive" in statuses else "passed"
     report = {
@@ -150,7 +162,10 @@ def execute_run(plan: dict[str, Any], *, case_id: str, run_id: str, rest: Salesf
         "action": {"identifier": plan["action"]["identifier"], "started_at": call.started_at, "finished_at": call.finished_at},
         "status": status, "results": copy.deepcopy(results), "unexpected_changes": unexpected,
         "limitations": limitations, "containment_events": [], "generated_at": now(),
+        "coverage_status": coverage_status,
     }
+    if coverage is not None:
+        report["rule_coverage"] = coverage
     store.save("report", report)
     return report
 

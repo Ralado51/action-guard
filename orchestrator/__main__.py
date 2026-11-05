@@ -14,6 +14,7 @@ import uuid
 from connector.agent_api import AgentClient
 from connector.auth import AuthError, get_token
 from connector.config import ConfigError, SalesforceConfig
+from connector.ids import key15
 from connector.rest import SalesforceRest
 from connector.snapshot import utc_now
 from connector.transport import UrllibTransport
@@ -73,11 +74,24 @@ def run(args, transport, confirm, secret):
     print(json.dumps(plan, indent=2, ensure_ascii=False))
     expected = "APROVAR " + plan["plan_hash"]
     print("Esta acao fecha o Case e cria uma Task. Confira tambem o escopo monitored.")
+    coverage = plan.get("rule_coverage") or []
+    label = {"covered": "COBERTA", "not_verifiable": "NAO VERIFICADA", "conflicts_with_policy": "CONFLITA COM O PLANO"}
+    if coverage:
+        print("\nCobertura da regra (proposta do modelo, conferida pelo servidor):")
+        for item in coverage:
+            print(f"  [{label[item['status']]}] {item['clause_id']}: {item['text']}  -> {', '.join(item['check_ids']) or '-'}")
     if confirm("Digite " + expected + ": ").strip() != expected:
         print("Cancelado. Nenhuma chamada ao Salesforce.")
         return 0
+    if any(i["status"] != "covered" for i in coverage):
+        print("ATENCAO: ha clausulas da regra que este plano NAO verifica. Um 'passed' vale so para as verificacoes listadas.")
+        if confirm("Digite ACEITAR COBERTURA PARCIAL para continuar: ").strip() != "ACEITAR COBERTURA PARCIAL":
+            print("Cancelado. Nenhuma chamada ao Salesforce.")
+            return 0
     plan["approval"] = {"approved_by": args.approved_by, "approved_at": utc_now(),
                         "approved_plan_hash": plan["plan_hash"]}
+    if coverage:
+        plan["approval"]["coverage_acknowledged"] = sorted(i["clause_id"] for i in coverage)
     env = dict(os.environ)
     for key in ("SF_CLIENT_ID", "SF_CLIENT_SECRET"):
         if not env.get(key):
@@ -88,7 +102,10 @@ def run(args, transport, confirm, secret):
     # not a distributed exactly-once guarantee. Never delete to blindly retry.
     guards = Path(args.runs_dir) / "attempts"
     guards.mkdir(parents=True, exist_ok=True)
-    key = hashlib.sha256((cfg.my_domain + "|" + case_id).encode()).hexdigest()
+    key = hashlib.sha256((cfg.my_domain + "|" + key15(case_id)).encode()).hexdigest()
+    legacy = hashlib.sha256((cfg.my_domain + "|" + case_id).encode()).hexdigest()   # reservas anteriores usavam o Id completo
+    if (guards / (legacy + ".json")).exists():
+        raise FileExistsError(legacy)
     _save_new(guards / (key + ".json"), {"plan_hash": plan["plan_hash"], "at": utc_now()})
     run_id = "integrated-" + uuid.uuid4().hex
     store = EvidenceStore(args.runs_dir, run_id)

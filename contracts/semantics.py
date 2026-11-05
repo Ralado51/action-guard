@@ -46,6 +46,16 @@ def validate_plan_semantics(plan: dict[str, Any]) -> list[str]:
             for mf in c.get("match", {}):
                 need(c["object"], mf, f"{where} match")
 
+    cov_ids = [i["clause_id"] for i in plan.get("rule_coverage", [])]
+    for dup in sorted({i for i in cov_ids if cov_ids.count(i) > 1}):
+        issues.append(f"clause_id duplicado em rule_coverage: {dup}")
+    for item in plan.get("rule_coverage", []):
+        for cid in item["check_ids"]:
+            if cid not in ids:
+                issues.append(f"rule_coverage {item['clause_id']}: check_id {cid} nao existe no plano")
+        if item["status"] == "covered" and not item["check_ids"]:
+            issues.append(f"rule_coverage {item['clause_id']}: covered exige ao menos um check_id")
+
     for pre in plan.get("preconditions", []):
         if "object" in pre:
             need(pre["object"], pre.get("field"), f"precondition {pre['id']}")

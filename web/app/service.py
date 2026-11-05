@@ -128,6 +128,8 @@ class Workflow:
                 # Action and target are server-owned; binding has its own explicit route.
                 if plan.get('preconditions') != old.get('preconditions'):
                     raise WorkflowError(422, 'Precondicoes obrigatorias devem ser preservadas.')
+                if plan.get('rule_coverage') != old.get('rule_coverage'):
+                    raise WorkflowError(422, 'A cobertura da regra e atribuida pelo servidor e nao pode ser editada.')
                 if plan.get('action') != old['action']:
                     raise WorkflowError(422, 'Acao e motivo sao fixos. Gere outro plano para trocar o motivo.')
                 plan = with_hash(plan)
@@ -136,7 +138,7 @@ class Workflow:
             self._put(db, 'plans', key, entry)
         return plan
 
-    def approve(self, key, expected_hash, actor):
+    def approve(self, key, expected_hash, actor, acknowledged=()):
         with self.connect() as db:
             db.execute('BEGIN IMMEDIATE')
             entry = self._get(db, 'plans', key)
@@ -146,7 +148,12 @@ class Workflow:
             if ready_for_approval(plan):
                 raise WorkflowError(409, 'Vincule um Case antes da aprovacao.')
             self.validate(entry, plan)
+            clauses = sorted(i['clause_id'] for i in plan.get('rule_coverage') or [])
+            if sorted(set(acknowledged)) != clauses:
+                raise WorkflowError(409, 'Confirme o tratamento de cada clausula da regra (coberta, nao verificada ou em conflito) antes de aprovar.')
             plan['approval'] = {'approved_by': actor, 'approved_at': utc_now(), 'approved_plan_hash': expected_hash}
+            if clauses:
+                plan['approval']['coverage_acknowledged'] = clauses
             self._put(db, 'plans', key, entry)
         return plan
 

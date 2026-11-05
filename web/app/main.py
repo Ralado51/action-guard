@@ -77,6 +77,7 @@ class BindCaseRequest(HashRequest):
 class ApprovePlanRequest(Body):
     approved_by: str = Field(min_length=1, max_length=80)
     approved_plan_hash: str = Field(pattern=r'^sha256:[0-9a-f]{64}$')
+    acknowledged_clauses: list[str] = Field(default_factory=list, max_length=12)
 
 
 class ExecuteRunRequest(HashRequest):
@@ -125,7 +126,7 @@ def bind(plan_id: str, body: BindCaseRequest, svc=Depends(workflow)):
 
 @app.post('/api/plans/{plan_id}/approve', dependencies=[Depends(authorize)])
 def approve(plan_id: str, body: ApprovePlanRequest, svc=Depends(workflow)):
-    return invoke(svc.approve, plan_id, body.approved_plan_hash, body.approved_by)
+    return invoke(svc.approve, plan_id, body.approved_plan_hash, body.approved_by, body.acknowledged_clauses)
 
 
 @app.post('/api/runs', status_code=202, dependencies=[Depends(authorize)])

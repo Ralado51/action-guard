@@ -17,6 +17,7 @@ from connector.transport import Transport
 from contracts.plan_hash import with_hash
 from contracts.semantics import validate_plan_semantics
 
+from . import coverage as cov
 from . import policy
 from .client import Budget, ChatResult, VultrChatClient
 from .config import PlannerConfig
@@ -84,10 +85,11 @@ def create_plan(rule: dict[str, Any], metadata_context: Any, action_context: Any
     check_sufficiency(meta, action)       # antes de gastar qualquer chamada
 
     import time
+    clauses = cov.segment(rule["text_pt"])
     client = VultrChatClient(cfg, transport, sleep or time.sleep)
     budget = Budget(cfg.max_calls)
     messages = [{"role": "system", "content": system_prompt()},
-                {"role": "user", "content": user_prompt(rule["text_pt"], meta, action)}]
+                {"role": "user", "content": user_prompt(rule["text_pt"], meta, action, clauses)}]
     plan_id = id_factory()
     usage: dict[str, int] = {}
     served: str | None = None
@@ -107,6 +109,10 @@ def create_plan(rule: dict[str, Any], metadata_context: Any, action_context: Any
             problems = [str(e)]
         else:
             plan, struct, warnings = policy.assemble(proposal, rule, action, plan_id=plan_id)
+            if plan:
+                items, cov_warnings = cov.finalize(clauses, proposal.get("coverage"), plan["checks"])
+                warnings = warnings + cov_warnings
+                plan = with_hash({**plan, "rule_coverage": items})
             schema_p, sem_p = policy.validate(plan, meta, action, v["test_plan"]) if plan else ([], [])
             problems = schema_p + struct + sem_p
             category = "schema" if schema_p else "semantics"

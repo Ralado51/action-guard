@@ -63,6 +63,15 @@
             "approved_plan_hash": {
               "type": "string",
               "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "coverage_acknowledged": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^cl_[0-9]{2}$"
+              },
+              "maxItems": 12,
+              "description": "Clausulas cujo tratamento (coberta/nao verificavel/conflito) o responsavel confirmou. Fora do hash."
             }
           }
         }
@@ -385,6 +394,58 @@
             }
           }
         ]
+      }
+    },
+    "rule_coverage": {
+      "description": "Cobertura da regra por clausula, atribuida pelo servidor (nao editavel). Faz parte do hash aprovado.",
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "clause_id",
+          "text",
+          "status",
+          "check_ids",
+          "reason",
+          "basis"
+        ],
+        "properties": {
+          "clause_id": {
+            "type": "string",
+            "pattern": "^cl_[0-9]{2}$"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "status": {
+            "enum": [
+              "covered",
+              "not_verifiable",
+              "conflicts_with_policy"
+            ]
+          },
+          "check_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 4
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "basis": {
+            "enum": [
+              "model",
+              "server_rule"
+            ]
+          }
+        }
       }
     }
   }

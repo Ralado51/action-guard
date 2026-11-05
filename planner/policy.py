@@ -26,7 +26,7 @@ MAX_POLL_ATTEMPTS = 60
 ALLOWED_OBJECTS = ("Case", "Task")
 PROTECTED_CASE_FIELDS = ("Status", "Closure_Reason__c", "OwnerId", "ClosedDate", "IsClosed")
 CANONICAL_ALLOWED_CHANGES = ["Case.Status", "Case.Closure_Reason__c", "Case.ClosedDate", "Case.IsClosed"]
-ALLOWED_PROPOSAL_KEYS = ("monitored", "async_window", "checks")
+ALLOWED_PROPOSAL_KEYS = ("monitored", "async_window", "checks", "coverage")
 CHECK_KEYS = {"kind", "description", "object", "field", "expected", "link_field", "expected_count", "match",
               "allowed_changes", "check_id"}
 _CTRL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
