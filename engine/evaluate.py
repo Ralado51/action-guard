@@ -66,7 +66,7 @@ def _created(check, before, after, rid):
     old, new = _index(before, obj), _index(after, obj)
     if old is None or new is None:
         return "inconclusive", "Colecao nao observada integralmente.", [], {}
-    matches, unknown = [], []
+    matches, unknown, unmatched = [], [], []
     criteria = {link: rid, **check.get("match", {})}
     # The link must always target the primary record, even with a conflicting match.
     criteria[link] = rid
@@ -79,11 +79,13 @@ def _created(check, before, after, rid):
                 unknown.append(key)
             elif all(fields.get(f) == v for f, v in check.get("match", {}).items()):
                 matches.append(key)
+            else:
+                unmatched.append(key)   # nova e vinculada ao Case, mas nao e a Task esperada
     expected = check.get("expected_count", 1)
     status = ("failed" if len(matches) > expected else "inconclusive" if unknown
               else "passed" if len(matches) == expected else "failed")
     detail = {"matching_ids": matches, "unobserved_candidate_ids": unknown,
-              "expected_count": expected, "criteria": criteria}
+              "linked_unmatched_ids": unmatched, "expected_count": expected, "criteria": criteria}
     return status, f"{len(matches)} novos correspondentes; esperado {expected}; {len(unknown)} candidatos incertos.", matches + unknown, detail
 
 

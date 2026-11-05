@@ -9,11 +9,12 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
+from connector.ids import InvalidSalesforceId, to_sfid18
+
 from .errors import PlannerError
 
 KNOWN_REASONS = ("Resolved - Customer confirmed", "Resolved - Guidance provided", "Duplicate", "Cancelled")
 SOURCES = ("salesforce_describe", "fixture")
-SFID = re.compile(r"^[A-Za-z0-9]{15,18}$")
 IDENT = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,79}$")
 
 # Campos que o MVP close_case precisa ler (invariantes). Os demais sao opcionais.
@@ -88,8 +89,11 @@ def parse_action(raw: Any) -> ActionContext:
     if not isinstance(subject, str) or not subject.strip() or len(subject) > 255 or subject != subject.strip():
         raise _insufficient("task_subject ausente, com espacos nas pontas ou maior que 255 caracteres")
     case_id = raw.get("case_id")
-    if case_id is not None and (not isinstance(case_id, str) or not SFID.match(case_id)):
-        raise _insufficient("case_id invalido; ele vem do backend/operador, nunca do modelo")
+    if case_id is not None:
+        try:
+            case_id = to_sfid18(case_id)
+        except InvalidSalesforceId:
+            raise _insufficient("case_id invalido (15 ou 18 caracteres); ele vem do backend/operador, nunca do modelo") from None
     agent = raw.get("agent_name", "Action Guard")
     if not isinstance(agent, str) or not agent.strip() or len(agent) > 80:
         raise _insufficient("agent_name invalido")

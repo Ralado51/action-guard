@@ -9,12 +9,14 @@ from pathlib import Path
 
 from connector.agent_api import AgentClient
 from connector.auth import get_token
-from connector.config import SalesforceConfig
+from connector.config import ConfigError, SalesforceConfig
+from connector.ids import key15
 from connector.rest import SalesforceRest
 from connector.snapshot import utc_now
 from connector.transport import UrllibTransport
 from contracts.plan_hash import approval_is_valid, compute_plan_hash, with_hash
-from orchestrator.run import execute_run
+from connector.auth import AuthError
+from orchestrator.run import RunBlocked, execute_run
 from orchestrator.store import EvidenceStore
 from planner import bind_case, create_plan, ready_for_approval
 from planner import policy
@@ -61,8 +63,11 @@ class Workflow:
         path = os.environ.get('SF_METADATA_PATH')
         if not path:
             raise WorkflowError(503, 'Configure SF_METADATA_PATH no servidor.')
-        raw = json.loads(Path(path).read_text())
-        if raw.get('source') != 'salesforce_describe':
+        try:
+            raw = json.loads(Path(path).read_text())
+        except (OSError, ValueError):
+            raise WorkflowError(503, 'Arquivo de metadados ausente ou ilegivel no servidor.') from None
+        if not isinstance(raw, dict) or raw.get('source') != 'salesforce_describe':
             raise WorkflowError(422, 'Este fluxo exige metadados Salesforce Describe.')
         parse_metadata(raw)
         return raw
@@ -159,7 +164,7 @@ class Workflow:
                 raise WorkflowError(409, 'Plano ainda nao pode ser executado.')
             run_id = 'run-' + uuid.uuid4().hex
             record = {'run_id': run_id, 'state': 'queued', 'plan': plan, 'generation': entry['generation']}
-            target = cfg.my_domain + '|' + plan['action']['input']['case_id']
+            target = cfg.my_domain + '|' + key15(plan['action']['input']['case_id'])
             try:
                 db.execute('INSERT INTO runs VALUES (?,?,?)', (run_id, target, json.dumps(record)))
             except sqlite3.IntegrityError:
@@ -177,12 +182,34 @@ class Workflow:
         try:
             record['report'] = self.execute(record['plan'], run_id)
             record['state'] = 'completed'
-        except Exception:
-            # Never return raw upstream exceptions or retry a potentially sent action.
-            record['state'] = 'error'
-            record['error'] = 'Execucao interrompida; reconciliar evidencias antes de nova tentativa.'
+        except Exception as e:
+            sent = self._maybe_sent(run_id, e)
+            if sent is False:
+                # Nenhum pedido chegou ao agente: a reserva e liberada (o historico fica) para uma nova tentativa.
+                record['state'] = 'blocked'
+                record['sent'] = False
+                record['error'] = 'Execucao bloqueada antes do envio; nenhuma acao foi enviada ao agente.'
+                if isinstance(e, RunBlocked):
+                    record['blocked_reason'] = str(e)[:300]
+                self._release(run_id)
+            else:
+                # Possivelmente enviada: nunca expor excecao bruta nem repetir a acao.
+                record['state'] = 'error'
+                record['sent'] = True
+                record['error'] = 'Execucao interrompida apos o possivel envio; reconciliar evidencias antes de nova tentativa.'
         with self.connect() as db:
             self._put(db, 'runs', run_id, record)
+
+    def _maybe_sent(self, run_id, exc):
+        """False somente quando ha base: RunBlocked (portoes anteriores ao envio) ou OAuth/config antes de qualquer pedido."""
+        if isinstance(exc, (RunBlocked, AuthError, ConfigError)):
+            request_saved = (self.root / 'evidence' / run_id / 'agent_request.json').exists()
+            return None if request_saved else False
+        return None
+
+    def _release(self, run_id):
+        with self.connect() as db:
+            db.execute('UPDATE runs SET target = target || ? WHERE id = ?', ('#released:' + run_id, run_id))
 
     def _execute(self, plan, run_id):
         cfg = SalesforceConfig.from_env()

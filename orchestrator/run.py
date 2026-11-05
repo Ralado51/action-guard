@@ -13,6 +13,7 @@ import copy
 from typing import Any, Callable
 
 from connector.agent_api import REJECTED, SENT_OK, UNCERTAIN, AgentClient
+from connector.ids import InvalidSalesforceId, same_record, to_sfid18
 from connector.rest import SalesforceRest
 from connector.snapshot import collect_snapshot, utc_now
 from contracts.plan_hash import approval_is_valid
@@ -55,8 +56,11 @@ def _gates(plan: dict[str, Any], case_id: str) -> str:
     bound = (action.get("input") or {}).get("case_id")
     if not isinstance(bound, str) or not bound.strip():
         raise RunBlocked("action.input.case_id obrigatorio antes da aprovacao")
-    if bound != case_id:
-        raise RunBlocked("o Case informado difere do Case aprovado no plano")
+    try:
+        if not same_record(bound, case_id):
+            raise RunBlocked("o Case informado difere do Case aprovado no plano")
+    except InvalidSalesforceId:
+        raise RunBlocked("Id de Case invalido") from None
     return reason
 
 
@@ -78,6 +82,7 @@ def execute_run(plan: dict[str, Any], *, case_id: str, run_id: str, rest: Salesf
                 evaluator: Evaluator = evaluate, store: EvidenceStore, sleep: Callable[[float], None],
                 now: Callable[[], str] = utc_now) -> dict[str, Any]:
     reason = _gates(plan, case_id)
+    case_id = to_sfid18(case_id)          # a REST devolve 18 caracteres; todas as comparacoes usam essa forma
     primary = {"object": "Case", "id": case_id}
     store.save("plan", plan)
 
@@ -91,7 +96,7 @@ def execute_run(plan: dict[str, Any], *, case_id: str, run_id: str, rest: Salesf
                for field in mon["fields"] if field not in rec["fields"]]
     if missing:
         raise RunBlocked("snapshot anterior com campos nao coletados: " + "; ".join(missing))
-    if not any(r["id"] == case_id for r in before["records"].get("Case", [])):
+    if not any(same_record(r["id"], case_id) for r in before["records"].get("Case", [])):
         raise RunBlocked("Case aprovado ausente do snapshot anterior")
     problems = _preconditions_ok(plan, before)
     if problems:
@@ -115,15 +120,23 @@ def execute_run(plan: dict[str, Any], *, case_id: str, run_id: str, rest: Salesf
     store.save("after", after)
 
     limitations = [
-        "no_unexpected_change cobre somente os registros e campos monitorados pelo plano.",
+        "no_unexpected_change cobre somente os registros e campos monitorados pelo plano; nao observa outros objetos nem Tasks nao vinculadas ao Case.",
+        "A contagem de Tasks conta apenas as novas que atendem ao vinculo e ao Subject esperados; outras Tasks novas vinculadas ao Case sao avisadas, mas nao alteram o status.",
+        "A coleta posterior para assim que todas as verificacoes passam; efeitos tardios depois desse instante nao sao vistos.",
         "A acao foi disparada pelo Agent API do Agentforce; a resposta do agente e narrativa e nao substitui a evidencia dos registros.",
         "Sem garantia de execucao exatamente uma vez: uma chamada unica do cliente reduz, mas nao elimina, repeticao.",
     ]
     limitations += [f"snapshot: {i}" for i in validate_snapshot_pair(plan, before, after)]
     if call.outcome == UNCERTAIN:
         limitations.append("Resultado da chamada ao agente incerto (timeout ou erro apos o envio): reconciliar por evidencia e revisao humana antes de qualquer nova tentativa.")
-    if call.outcome == REJECTED:
-        limitations.append(f"A chamada ao agente nao chegou a executar: {call.error}")
+    if call.outcome == REJECTED and call.session_id is None:
+        limitations.append(f"A chamada ao agente nao chegou a executar (a sessao nao abriu e nenhum pedido foi enviado): {call.error}")
+    elif call.outcome == REJECTED:
+        limitations.append(f"O pedido foi recusado pelo Agent API ({call.error}). Isso nao prova que nada foi executado: valem os registros coletados.")
+    for r in results:
+        ids = (r.get("evidence", {}).get("after") or {}).get("linked_unmatched_ids") if isinstance(r.get("evidence", {}).get("after"), dict) else None
+        if ids:
+            limitations.append(f"AVISO {r['check_id']}: {len(ids)} Task(s) nova(s) vinculada(s) ao Case nao correspondem ao Subject esperado ({', '.join(ids)}). O status das verificacoes nao muda; revise manualmente.")
     if call.session_close_error:
         limitations.append(f"Falha ao encerrar a sessao do agente (nao altera o resultado): {call.session_close_error}")
     if not after["complete"]:

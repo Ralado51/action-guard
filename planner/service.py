@@ -20,7 +20,8 @@ from contracts.semantics import validate_plan_semantics
 from . import policy
 from .client import Budget, ChatResult, VultrChatClient
 from .config import PlannerConfig
-from .context import KNOWN_REASONS, SFID, ActionContext, check_sufficiency, parse_action, parse_metadata
+from connector.ids import InvalidSalesforceId, to_sfid18
+from .context import KNOWN_REASONS, ActionContext, check_sufficiency, parse_action, parse_metadata
 from .errors import PlannerError
 from .prompt import correction_prompt, system_prompt, user_prompt
 
@@ -123,8 +124,10 @@ def create_plan(rule: dict[str, Any], metadata_context: Any, action_context: Any
 
 def bind_case(plan: dict[str, Any], case_id: str) -> dict[str, Any]:
     """Vincula o Case ao plano: nova versao, novo hash, SEM aprovacao (revisao humana obrigatoria)."""
-    if not isinstance(case_id, str) or not SFID.match(case_id):
-        raise PlannerError("insufficient_context", ["case_id invalido"])
+    try:
+        case_id = to_sfid18(case_id)      # sempre a forma de 18 caracteres, a mesma que a REST devolve
+    except InvalidSalesforceId:
+        raise PlannerError("insufficient_context", ["case_id invalido"]) from None
     out = copy.deepcopy(plan)
     out.setdefault("action", {}).setdefault("input", {})["case_id"] = case_id
     out["plan_version"] = int(out["plan_version"]) + 1

@@ -13,7 +13,7 @@ from typing import Any, Callable
 from .rest import QueryError, SalesforceRest
 
 _IDENT = re.compile(r"^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)*$")
-_SFID = re.compile(r"^[A-Za-z0-9]{15,18}$")
+_SFID = re.compile(r"^[A-Za-z0-9]{15}([A-Za-z0-9]{3})?$")
 
 
 def utc_now() -> str:

@@ -8,7 +8,9 @@ from typing import Any, Callable
 from connector.transport import Response, TransportError
 from tests import oracle
 
-CASE = "500SYN000000001AAA"
+from connector.ids import to_sfid18
+
+CASE = to_sfid18("500SYN000000001")   # 18 caracteres com sufixo valido, como a REST devolve
 OWNER = "005SYN000000001AAA"
 OTHER = "005SYN000000002AAA"
 SUBJECT = "Action Guard - Case closure follow-up"
@@ -99,11 +101,13 @@ class FakeSalesforce:
 
     def _select(self, obj, flt, ids, all_):
         if obj == "Case":
-            rows = [c for c in self.cases.values() if c["Id"] in ids]
+            want = {i[:15] for i in ids}                      # a Salesforce aceita 15 ou 18 nos filtros
+            rows = [c for c in self.cases.values() if c["Id"][:15] in want]
             if all_:
-                rows += [{"Id": i} for i in self.deleted if i in ids and i not in self.cases]
+                rows += [{"Id": i} for i in self.deleted if i[:15] in want and i not in self.cases]
             return rows
-        return [t for t in self.tasks if t.get(flt) in ids]
+        want = {i[:15] for i in ids}
+        return [t for t in self.tasks if isinstance(t.get(flt), str) and t[flt][:15] in want]
 
     def _paginate(self, out):
         self._n += 1
@@ -145,6 +149,9 @@ def owner_changed(sim):
 
 def no_task(sim):
     _close(sim)
+
+def extra_other_task(sim):
+    _close(sim); sim.add_task(1); sim.add_task(1, subject="Ligar para o cliente")
 
 def many_tasks(sim):
     _close(sim); sim.add_task(2)
