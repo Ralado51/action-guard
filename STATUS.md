@@ -117,3 +117,12 @@ Nao confundir infraestrutura pronta com produto funcionando.
 - Operador informou coleta real por Describe e consultas LIMIT 0: 7 campos Case e 5 Task. Planner real retornou ok=true, metadata_source=salesforce_describe, sem avisos, uma chamada, modelo deepseek-v4.1-flash-1017; 1073 prompt + 634 completion = 1707 tokens. Hash do rascunho informado: sha256:0445be41a8d70ed1f83149916587fd13ce41bf83c693899afd67cfa13854e6f5. Sem Case vinculado ou aprovacao; nenhuma acao executada por esse teste.
 - Novo CLI `python -m orchestrator prepare/run` conecta geracao, vinculo do Case, aprovacao explicita do hash e execute_run. Ver docs/INTEGRATED_CLI.md.
 - 272 testes locais aprovados em Python 3.12.14, com transporte simulado. CLI completo contra servicos reais e Docker desta versao ainda pendentes. Nao confundir com os testes reais separados de planner e executor.
+
+## API e interface assumidas pelo Codex — 2026-11-05
+
+- Instrucao explicita do Airton: seguir sem Gemini. API e interface em web/ implementadas nesta branch; OWNERS.md atualizado.
+- Gerar plano com Vultr, vincular Case fornecido pelo operador, revisar/editar, aprovar hash, executar em background, consultar estado e baixar relatorio. Persistencia SQLite com reserva transacional por org/Case. Token compartilhado da aplicacao, segredos de integracao somente no backend. Ver docs/API.md e docs/WEB_DEMO.md.
+- 276 testes locais passaram em Python 3.12.14; ciclo API com planner/transporte simulados e motor real, concorrencia/replay, aprovacao obsoleta, invariantes, persistencia e erros seguros. JavaScript passou em node --check.
+- Validacao visual em browser nao concluida: Chromium ausente e download falhou. Docker e acao real pela interface ainda nao testados. Nao implantado nem mergeado.
+- Operador forneceu evidencia anterior do CLI completo: plano Vultr com Describe, vinculo antes de aprovacao, execucao Agentforce e seis checks passed; pacote confirmado na VM. Isso nao substitui validacao da API/UI atual.
+- BackgroundTasks nao e fila duravel; interrupcao de queued/running requer reconciliacao manual, sem reenvio automatico. Reserva protege apenas este banco/volume, nao outras maquinas/CLI. Sandbox isolado continua pendente.
