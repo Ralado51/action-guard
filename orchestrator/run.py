@@ -18,6 +18,8 @@ from connector.snapshot import collect_snapshot, utc_now
 from contracts.plan_hash import approval_is_valid
 from contracts.semantics import validate_plan_semantics, validate_snapshot_pair
 
+from engine import evaluate
+
 from .store import EvidenceStore
 
 # evaluator(plan, before, after) -> (check_results, unexpected_changes)
@@ -73,7 +75,7 @@ def _preconditions_ok(plan: dict[str, Any], before: dict[str, Any]) -> list[str]
 
 
 def execute_run(plan: dict[str, Any], *, case_id: str, run_id: str, rest: SalesforceRest, agent: AgentClient,
-                evaluator: Evaluator, store: EvidenceStore, sleep: Callable[[float], None],
+                evaluator: Evaluator = evaluate, store: EvidenceStore, sleep: Callable[[float], None],
                 now: Callable[[], str] = utc_now) -> dict[str, Any]:
     reason = _gates(plan, case_id)
     primary = {"object": "Case", "id": case_id}
