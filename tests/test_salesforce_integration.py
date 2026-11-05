@@ -22,8 +22,17 @@ ENV = {"SF_LOGIN_URL": "https://example.my.salesforce.com/", "SF_API_VERSION": "
 NOW = lambda: "2026-11-04T19:00:00Z"  # noqa: E731
 
 
+def reapprove(plan):
+    plan = with_hash(plan)
+    plan["approval"] = {"approved_by": "test-operator", "approved_at": NOW(),
+                        "approved_plan_hash": plan["plan_hash"]}
+    return plan
+
+
 def approved_plan():
-    return load(EXAMPLES / "test_plan.json")
+    plan = load(EXAMPLES / "test_plan.json")
+    plan["action"]["input"]["case_id"] = sim.CASE
+    return reapprove(plan)
 
 
 def build(fake, tmp_path, plan=None, run_id="run-sim-001"):
@@ -97,7 +106,10 @@ def test_preexisting_task_with_expected_subject_does_not_hide_missing_new_one(tm
 
 
 def test_omitted_fields_are_inconclusive_not_passed(tmp_path):
-    _, rep = run(sim.close_ok, tmp_path, lambda f: f.omit_fields.add("OwnerId"))
+    def omit_after(f):
+        sim.close_ok(f)
+        f.omit_fields.add("OwnerId")
+    _, rep = run(omit_after, tmp_path)
     s = by_id(rep)
     assert s["chk_owner_unchanged"] == "inconclusive" and s["chk_no_unexpected"] == "inconclusive"
     assert rep["status"] == "inconclusive"
@@ -331,3 +343,50 @@ def test_synthetic_case_creation_uses_post(tmp_path):
         return orig(method, url, **k)
     fake.request = req
     assert create_synthetic_case(kw["rest"]) == "500SYN000000777AAA"
+
+
+
+@pytest.mark.parametrize("bound", [None, "", "   "])
+def test_case_binding_required_before_any_agent_call(tmp_path, bound):
+    plan = approved_plan()
+    if bound is None:
+        del plan["action"]["input"]["case_id"]
+    else:
+        plan["action"]["input"]["case_id"] = bound
+    fake = blocked(reapprove(plan), tmp_path)
+    assert fake.action_calls == 0
+    assert not any("einstein" in u for _, u in fake.log)
+
+
+def test_changing_bound_case_invalidates_approval(tmp_path):
+    plan = approved_plan()
+    plan["action"]["input"]["case_id"] = "500SYN000000099AAA"
+    assert blocked(plan, tmp_path).action_calls == 0
+
+
+@pytest.mark.parametrize("field", ["OwnerId", "Subject", "Closure_Reason__c"])
+def test_missing_before_field_blocks_before_agent_session(tmp_path, field):
+    fake = sim.FakeSalesforce(sim.close_ok)
+    fake.omit_fields.add(field)
+    with pytest.raises(RunBlocked, match="campos nao coletados"):
+        execute_run(**build(fake, tmp_path))
+    assert fake.action_calls == 0
+    assert not any("einstein" in u for _, u in fake.log)
+
+
+@pytest.mark.parametrize("done", [None, "true", 1, [], {}])
+def test_invalid_pagination_done_is_collection_failure(tmp_path, done):
+    fake = sim.FakeSalesforce()
+    original = fake.request
+    def malformed(method, url, **kw):
+        response = original(method, url, **kw)
+        if "/query?" in url:
+            if done is None:
+                response.body.pop("done", None)
+            else:
+                response.body["done"] = done
+        return response
+    fake.request = malformed
+    with pytest.raises(RunBlocked, match="anterior incompleto"):
+        execute_run(**build(fake, tmp_path))
+    assert fake.action_calls == 0
