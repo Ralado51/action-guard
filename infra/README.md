@@ -74,7 +74,7 @@ so podem ser declarados validados depois de executados pelo operador.
 ## Entrega desta branch
 
 Base: `feat/outcome-audit`. Alteracoes somente em `web/` e `infra/`.
-Verificado localmente: 394 testes em Python 3.12 (servicos externos simulados),
+Verificado localmente: 395 testes em Python 3.12 (servicos externos simulados),
 sintaxe JavaScript, YAML parseado e verificacoes estaticas da politica de deploy.
 Nao verificado: build Docker, Compose em runtime, reinicio/persistencia, navegador,
 HTTPS, modelo real e org real. Nenhuma acao no Salesforce, deploy ou merge executado.
