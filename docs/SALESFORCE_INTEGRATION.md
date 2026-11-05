@@ -6,7 +6,7 @@ Base: dossie do operador de 04/11/2026 (nao versionado: contem identificadores d
 
 - `connector/`: configuracao por ambiente (`SF_LOGIN_URL`, `SF_API_VERSION`, `SF_AGENT_ID`, `SF_CLIENT_ID`, `SF_CLIENT_SECRET`), OAuth Client Credentials, consultas REST com paginacao e `queryAll`, coletor de snapshots, cliente do Agent API. Somente biblioteca padrao; transporte injetavel.
 - `orchestrator/`: `execute_run` (portoes de aprovacao, snapshot, acao unica, janela assincrona, avaliacao, relatorio) e `EvidenceStore` (um JSON atomico por etapa em `runs/<run_id>/`, ignorado pelo git).
-- O avaliador e injetado: o motor do Codex (`engine/`) entra aqui; os testes usam `tests/oracle.py`.
+- `engine.evaluate` e o avaliador padrao de `execute_run`; a injecao de outro avaliador continua disponivel. Os testes de integracao usam o motor real e os testes de paridade o comparam com `tests/oracle.py`, sem dependencia do oraculo em producao.
 - `tests/sim.py` e `tests/test_salesforce_integration.py`: Salesforce simulado, sem rede.
 
 ## Estado
@@ -35,3 +35,9 @@ Base: dossie do operador de 04/11/2026 (nao versionado: contem identificadores d
 ## Bloqueios reforcados
 
 O executor exige Case ID no plano aprovado e igualdade com o Case da execucao. Campos monitorados ausentes no snapshot anterior e Case principal nao encontrado bloqueiam antes de abrir sessao. Null explicito continua sendo evidencia coletada. Respostas REST sem `done` booleano sao falha de coleta, nunca lista completa.
+
+## Avaliador deterministico
+
+`engine.evaluate(plan, before, after)` retorna `(check_results, unexpected_changes)`. Implementa field_equals, field_not_empty, field_unchanged, record_created e no_unexpected_change. Resultados incluem IDs, campos e valores observados. Exclusao confirmada difere de desaparecimento sem prova; null difere de campo ausente. Contagem usa IDs novos vinculados e filtros match. Candidato sem campos necessarios impede sucesso; duplicata comprovada falha. Mudanca inesperada comprovada prevalece sobre evidencia insuficiente em outro campo. Identidades/fases incompativeis ou observacoes duplicadas nao estabelecem sucesso. O escopo continua limitado aos registros e campos monitorados.
+
+Validacao local: 197 testes em Python 3.12.14, incluindo comparacao independente com oraculo. Docker nao disponivel no ambiente desta entrega; executar `make docker-test` na VM Vultr apos checkout desta branch. Nenhuma chamada real ao Salesforce nesta entrega.
