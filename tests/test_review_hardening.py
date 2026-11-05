@@ -200,3 +200,21 @@ def test_unknown_exception_before_anything_is_treated_as_possibly_sent(setup):
     rid = _run(client, p).json()["run_id"]
     assert client.get("/api/runs/" + rid).json()["state"] == "error"
     assert _run(client, p).status_code == 409
+
+
+def test_reserve_key_is_independent_of_bind_normalization(setup):
+    """Defesa em profundidade: mesmo um plano com Id de 15 caracteres gravado fora do bind colide na reserva."""
+    client, svc, *_ = setup
+    _unique_plans(svc)
+    first = _bind_approve(client, sim.CASE)
+    assert _run(client, first).status_code == 202
+    second = _bind_approve(client, sim.CASE)
+    with svc.connect() as db:
+        row = json.loads(db.execute("SELECT body FROM plans WHERE id=?", (second["plan_id"],)).fetchone()[0])
+        plan = row["plan"]
+        plan["action"]["input"]["case_id"] = sim.CASE[:15]
+        plan = with_hash(plan)
+        plan["approval"] = {"approved_by": "x", "approved_at": "2026-11-05T10:00:00Z", "approved_plan_hash": plan["plan_hash"]}
+        row["plan"] = plan
+        db.execute("UPDATE plans SET body=? WHERE id=?", (json.dumps(row), second["plan_id"]))
+    assert _run(client, plan).status_code == 409
