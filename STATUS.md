@@ -93,3 +93,12 @@ Nao confundir infraestrutura pronta com produto funcionando.
 - Evidencias JSON geradas na VM em `runs/integrated-<case-id>/`; operador confirmou criacao de `~/action-guard-integrated-evidence.tar.gz`. Arquivo nao foi transferido nem inspecionado pelo assistente; dados da org nao publicados no repositorio.
 - Validacao real relatada pelo operador; nao garante exatamente uma execucao e nao cobre campos/registros fora do plano. Nao reexecutar o Case usado.
 - Planner Vultr, interface e executor isolado continuam pendentes.
+
+## Planner Vultr — 2026-11-05 (branch `feat/planner-vultr`, base `f20936a`)
+
+- Implementado em `planner/`: cliente Vultr, contextos, montagem/validacao, `create_plan`, `bind_case`, `ready_for_approval` e `python -m planner` (somente gera plano). Documentacao e decisao do vinculo do Case em `docs/PLANNER.md`.
+- **Testes simulados:** 265 passando em Python 3.13 e 3.12.3 (sem rede, sem chave). Mutacoes verificadas: remover o descarte de invariantes contraditorios e ignorar problemas estruturais derrubam testes.
+- **Nao executado:** `make docker-test` (sem daemon Docker no ambiente de autoria). **Nenhuma chamada real a Vultr** foi feita por mim: modelo, tokens e custo reais so existirao apos o operador rodar o teste de fumaca da VM.
+- Nenhuma acao no Salesforce. `web/` e `docs/API.md` nao foram alterados; rotas seguem 501. O planner ainda nao esta ligado a `POST /api/plans`.
+- Limites: o modelo contribui com monitored/janela/checks extras/descricoes, enquanto o servidor impoe os invariantes; a qualidade da traducao de regras alem do `close_case` nao foi avaliada; prompt e validacao nao foram testados contra o modelo real (comportamento de `finish_reason`, aderencia ao JSON e uso de tokens pendentes).
+- Pendencias: alinhar fluxo de vinculo do Case com a API/Gemini; rodar fumaca real na VM e registrar modelo, hash e tokens; ligar o planner a API.
