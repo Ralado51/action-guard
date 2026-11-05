@@ -1,6 +1,6 @@
 # STATUS
 
-Atualizado em 04/11/2026. Cada ferramenta le este arquivo no inicio de uma sessao e o atualiza ao entregar algo.
+Atualizado em 05/11/2026. Cada ferramenta le este arquivo no inicio de uma sessao e o atualiza ao entregar algo.
 
 Repositorio: https://github.com/Ralado51/action-guard (publico, criado pelo Airton).
 
@@ -31,9 +31,8 @@ Revisao de 04/11: o oraculo foi corrigido e os contratos reforcados (ver `docs/D
 
 ## Nao verificado
 
-- **Docker: o build da imagem e o teste dentro dela NAO foram executados.** O ambiente de autoria nao tem daemon Docker (`/var/run/docker.sock` inexistente). Nao ha evidencia de que o `Dockerfile` (Python 3.12-slim) constroi. A suite roda em Python 3.12.3 fora de contêiner, o que nao substitui `make docker-test`.
-- Nao foi verificado se ja existe um repositorio Action Guard no GitHub (token indisponivel no ambiente de autoria). Conferir antes de publicar.
-- Nenhuma integracao real: sem Salesforce, Agentforce, Flow, snapshots reais, planner, executor isolado ou interface publicada.
+- Codigo do conector/orquestrador ainda nao executado contra a org real; testes de integracao usam Salesforce simulado. Docker foi validado pelo operador na VM (ver registro abaixo).
+- Planner, executor isolado e interface publicada continuam pendentes. A integracao Salesforce por scripts separados foi validada pelo operador; isso nao substitui o teste real do conector deste PR.
 
 ## Infraestrutura confirmada pelo Airton (nao reverificada aqui)
 
@@ -59,11 +58,9 @@ Os contratos `1.0` estao liberados para trabalho em paralelo. Mudanca de contrat
 
 ## Pendencias reais
 
-- Preparar a org seguindo `docs/SALESFORCE_SETUP.md` (roteiro; nenhum passo foi executado numa org real ainda).
-- Org Salesforce de testes preparada, External Client App e autenticacao.
-- API name real do motivo de encerramento (ver `docs/DECISIONS.md`).
-- Agentforce acessivel via API; Flow ou acao do cenario criados.
-- Snapshots reais; executor isolado validado; aplicacao publica.
+- Executar o conector/orquestrador contra Case sintetico novo com plano aprovado; confirmar Subject e motivo completos por dados estruturados.
+- Org, External Client App, OAuth, Agentforce API e Flow ja foram validados pelo operador com scripts separados. Campo real: `Closure_Reason__c`.
+- Executor isolado e aplicacao publica.
 - Confirmar a trilha do hackathon.
 
 Nao confundir infraestrutura pronta com produto funcionando.
@@ -82,3 +79,10 @@ Nao confundir infraestrutura pronta com produto funcionando.
 - 197 testes locais passaram em Python 3.12.14, com comparacao ao oraculo independente e validacao de schema dos resultados.
 - Nao houve chamada ao Salesforce. Docker nao instalado neste ambiente; validacao Docker segue pendente na VM.
 - Isto nao implementa o executor isolado de sandbox nem o planner Vultr.
+
+## Validacao Docker na VM — 2026-11-05
+
+- Operador executou `sudo make docker-test` na branch `fix/salesforce-execution-gates` e informou `197 passed, 1 warning in 0.74s`.
+- Evidencia fornecida pelo operador; nao reexecutada pelo assistente. Salesforce simulado; nenhuma acao real realizada pelo teste Docker.
+- Repeticao sem sudo falhou por permissao no socket; nao invalida a execucao anterior aprovada.
+- Suite local: 197 testes em Python 3.12.14; motor real ligado ao orquestrador. Registros anteriores de 114/159/171 testes representam etapas historicas.
