@@ -126,3 +126,11 @@ Nao confundir infraestrutura pronta com produto funcionando.
 - Validacao visual em browser nao concluida: Chromium ausente e download falhou. Docker e acao real pela interface ainda nao testados. Nao implantado nem mergeado.
 - Operador forneceu evidencia anterior do CLI completo: plano Vultr com Describe, vinculo antes de aprovacao, execucao Agentforce e seis checks passed; pacote confirmado na VM. Isso nao substitui validacao da API/UI atual.
 - BackgroundTasks nao e fila duravel; interrupcao de queued/running requer reconciliacao manual, sem reenvio automatico. Reserva protege apenas este banco/volume, nao outras maquinas/CLI. Sandbox isolado continua pendente.
+
+## Interface validada pelo operador e sandbox offline — 2026-11-05
+
+- Operador informou build e 276 testes aprovados no Docker. Interface abriu via tunel SSH; geracao Vultr com Describe, vinculo do Case, aprovacao e execucao foram percorridos pelo operador.
+- Relatorio JSON baixado e inspecionado pelo assistente: versao/hash correspondentes a aprovacao exibida, seis checks passed, Case New->Closed, motivo exato, dono preservado, uma Task nova correspondente, unexpected_changes vazio dentro do escopo monitorado. Dados da org nao publicados.
+- Sandbox offline implementado separadamente: imagem minima de avaliacao, runner host com Docker sem rede/rootfs read-only/non-root/limites/cleanup e probes runtime. Ver docs/SANDBOX.md.
+- 295 testes locais aprovados (Python 3.12.14), sem executar Docker: restricoes e falhas de runtime simuladas; worker comparado ao motor nos cenarios. Validacao real na VM pendente.
+- Backend/interface ainda usam motor em processo; sandbox nao ligado ao relatorio. Nao afirmar contencao da acao Salesforce. Nenhuma nova acao Salesforce realizada nesta entrega.
