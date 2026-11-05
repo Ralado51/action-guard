@@ -27,6 +27,11 @@ Base: dossie do operador de 04/11/2026 (nao versionado: contem identificadores d
 
 1. Revisar este codigo e os testes.
 2. Operador exporta as variaveis no ambiente (nunca no chat ou no git).
-3. Criar um Case sintetico **novo** (`create_synthetic_case`) e aprovar o plano com o motivo.
+3. Criar um Case sintetico **novo** (`create_synthetic_case`) e inserir seu ID em `action.input.case_id` e o motivo em `action.input.closure_reason` **antes** de calcular o hash e aprovar. Exemplos sem Case vinculado nao sao executaveis.
 4. Uma unica execucao. Nao reexecutar em Case ja encerrado; o Case de evidencia do dossie nao deve ser reutilizado.
 5. Se der timeout, reconciliar pelos snapshots e revisao humana; nao repetir automaticamente.
+
+
+## Bloqueios reforcados
+
+O executor exige Case ID no plano aprovado e igualdade com o Case da execucao. Campos monitorados ausentes no snapshot anterior e Case principal nao encontrado bloqueiam antes de abrir sessao. Null explicito continua sendo evidencia coletada. Respostas REST sem `done` booleano sao falha de coleta, nunca lista completa.
