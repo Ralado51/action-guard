@@ -254,3 +254,62 @@ def test_cli_refuses_unapproved_plan(population, tmp_path, monkeypatch, capsys):
     f.write_text(json.dumps(p))
     assert audit_main(["run", "--plan", str(f), "--since", "2026-11-01T00:00:00Z", "--runs-dir", str(tmp_path / "r")], transport=fake) == 1
     assert not [u for m, u in fake.log if "query" in u]
+
+
+# ---- API ----
+from tests.test_api import HEADERS, approve, bind, create, setup  # noqa: E402,F401
+
+
+def _approved(client):
+    plan = bind(client, create(client))
+    r = approve(client, plan)
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def test_api_audit_requires_approval_and_token(setup):
+    client, svc, fake, calls = setup
+    plan = bind(client, create(client))
+    body = {"approved_plan_id": plan["plan_id"], "case_ids": [sim.CASE]}
+    assert client.post("/api/audits", json=body).status_code == 409
+    assert client.post("/api/audits", json=body, headers={"Authorization": ""}).status_code == 401
+
+
+def test_api_audit_is_read_only_and_saves_evidence(setup):
+    client, svc, fake, calls = setup
+    plan = _approved(client)
+    fake.cases.clear()
+    ok = make_case(fake, 1)
+    bad = make_case(fake, 2, reason=None)
+    r = client.post("/api/audits", json={"approved_plan_id": plan["plan_id"], "case_ids": [ok, bad]})
+    assert r.status_code == 200, r.text
+    rep = r.json()
+    assert rep["totals"] == {"evaluated": 2, "correct": 1, "incorrect": 1, "inconclusive": 0}
+    assert {m for m, u in fake.log if "oauth2" not in u} == {"GET"} and fake.action_calls == 0
+    assert list((svc.root / "audits").glob("audit-*/audit_report.json"))
+
+
+@pytest.mark.parametrize("body", [
+    {"case_ids": ["500SYN000000001YBA"], "since": "2026-11-01T00:00:00Z"},
+    {},
+    {"case_ids": ["curto"]},
+    {"since": "ontem"},
+    {"case_ids": ["500SYN000000001YBA"], "limit": 0},
+    {"case_ids": ["500SYN000000001YBA"], "extra": 1},
+    {"case_ids": ["500SYN000000001YBA"] * 501},
+])
+def test_api_audit_validates_input(setup, body):
+    client, svc, fake, calls = setup
+    plan = _approved(client)
+    assert client.post("/api/audits", json={"approved_plan_id": plan["plan_id"], **body}).status_code == 422
+
+
+def test_api_audit_explain_without_vultr_config_keeps_server_summary(setup, monkeypatch):
+    client, svc, fake, calls = setup
+    for k in ("VULTR_INFERENCE_API_KEY", "VULTR_INFERENCE_MODEL"):
+        monkeypatch.delenv(k, raising=False)
+    plan = _approved(client)
+    fake.cases.clear()
+    ok = make_case(fake, 1)
+    rep = client.post("/api/audits", json={"approved_plan_id": plan["plan_id"], "case_ids": [ok], "explain": True}).json()
+    assert rep["summary"]["basis"] == "server" and rep["summary"]["model_error"] == "config"

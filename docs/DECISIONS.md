@@ -26,6 +26,9 @@
 21. A aprovacao exige confirmacao humana de cada clausula (API: `acknowledged_clauses`; CLI: segunda confirmacao "ACEITAR COBERTURA PARCIAL"). A cobertura nao e editavel na API; editar o plano muda o hash.
 22. Estado de execucao `blocked`: falha antes de qualquer envio ao agente libera a reserva do Case. Erro apos possivel envio continua `error` e consome o Case. Um 4xx apos o envio nao prova que nada foi executado.
 23. O sandbox e opcional/offline (reavaliacao de evidencias); nao e requisito do fluxo e nao sustenta a alegacao de Blast Radius Zero.
+24. (Auditoria) Segundo modo de uso do mesmo motor: auditoria somente leitura do estado final, com o plano aprovado como modelo da regra (`docs/AUDIT.md`). Nao executa acao nem reserva Case. Contrato aditivo novo: `audit_report.schema.json`.
+25. Na auditoria, verificacoes que exigem o estado anterior (campo inalterado, nenhuma mudanca inesperada) ou um valor por registro (motivo exato do plano de teste) sao `not_auditable` e aparecem como NAO verificadas; inconclusivo nunca conta como correto; falha comprovada vence inconclusivo.
+26. O LLM nao decide veredito na auditoria. O resumo opcional recebe so contagens e descricoes, e e validado (numeros inexistentes ou aparencia de Id derrubam o texto; vale o do servidor). Limite conhecido: um numero real usado no contexto errado passa; por isso o texto do servidor acompanha o do modelo.
 
 ## Pendencias
 

@@ -20,6 +20,7 @@ Variaveis backend: as `SF_*` e `VULTR_INFERENCE_*` de `.env.example`, `ACTION_GU
 | PUT /api/plans/{id} | plan, expected_plan_hash | 200 nova versao sem aprovacao |
 | POST /api/plans/{id}/case | case_id, expected_plan_hash | 200 nova versao vinculada, sem aprovacao |
 | POST /api/plans/{id}/approve | approved_by, approved_plan_hash, acknowledged_clauses | 200 plano aprovado |
+| POST /api/audits | approved_plan_id, case_ids (ate 500) ou since [+ modified_by, limit], explain | 200 audit_report (SOMENTE LEITURA; ver docs/AUDIT.md) |
 | POST /api/runs | approved_plan_id, expected_plan_hash | 202 run_id |
 | GET /api/runs/{id} | — | state queued/running/completed/error/blocked (blocked = nada enviado ao agente, Case liberado); report ou erro seguro |
 | GET /api/runs/{id}/report | — | 200 report; 409 se indisponivel |

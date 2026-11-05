@@ -1,6 +1,7 @@
 """Single-operator API and UI. Live services only; credentials remain server-side."""
 import hmac
 import os
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
@@ -80,6 +81,15 @@ class ApprovePlanRequest(Body):
     acknowledged_clauses: list[str] = Field(default_factory=list, max_length=12)
 
 
+class AuditRequest(Body):
+    approved_plan_id: str = Field(min_length=1)
+    case_ids: list[str] | None = Field(default=None, max_length=500)
+    since: str | None = Field(default=None, pattern=r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$')
+    modified_by: str | None = Field(default=None, pattern=r'^[A-Za-z0-9]{15}([A-Za-z0-9]{3})?$')
+    limit: int = Field(default=200, ge=1, le=500)
+    explain: bool = False
+
+
 class ExecuteRunRequest(HashRequest):
     approved_plan_id: str = Field(min_length=1)
 
@@ -134,6 +144,16 @@ def execute(body: ExecuteRunRequest, background: BackgroundTasks, svc=Depends(wo
     run_id = invoke(svc.reserve, body.approved_plan_id, body.expected_plan_hash)
     background.add_task(svc.work, run_id)
     return {'run_id': run_id}
+
+
+@app.post('/api/audits', dependencies=[Depends(authorize)])
+def audit(body: AuditRequest, svc=Depends(workflow)):
+    if bool(body.case_ids) == bool(body.since):
+        raise HTTPException(422, 'Informe exatamente um entre case_ids e since.')
+    ids = body.case_ids
+    if ids is not None and any(not re.fullmatch(r'[A-Za-z0-9]{15}([A-Za-z0-9]{3})?', i) for i in ids):
+        raise HTTPException(422, 'Todos os Ids devem ter 15 ou 18 caracteres alfanumericos.')
+    return invoke(svc.audit, body.approved_plan_id, ids, body.since, body.modified_by, body.limit, body.explain)
 
 
 @app.get('/api/runs/{run_id}', dependencies=[Depends(authorize)])

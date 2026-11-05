@@ -10,12 +10,13 @@ Repositorio: https://github.com/Ralado51/action-guard (publico). Dados sintetico
 - **Nucleo (manter):** `engine/` (verificacoes deterministicas), `connector/` + `orchestrator/` (execucao unica, sem retry), evidencias e aprovacao por hash.
 - **Planner Vultr:** traduz a regra em plano; o servidor impoe invariantes. Agora tambem declara **cobertura da regra por clausula** (ver `docs/PLANNER.md`): o relatorio diz quais partes da regra NAO sao verificadas. Verde significa "as verificacoes listadas passaram", nao "a regra inteira foi cumprida".
 - **Interface/API (`web/`):** gerar, vincular Case, revisar, confirmar cobertura por clausula, aprovar hash, executar, ver relatorio. Estados de execucao: queued/running/completed/error/**blocked** (nada enviado ao agente).
+- **Auditoria (nova, `docs/AUDIT.md`):** modo somente leitura que mede, sobre Cases informados pelo agente ou encerrados numa janela, quantos atendem as verificacoes auditaveis do plano aprovado (taxa, falhas por verificacao, evidencia, o que nao e auditavel). CLI `python -m audit run`, rota `POST /api/audits` e painel 05 na interface. So testada com Salesforce/Vultr simulados; nenhuma auditoria na org real.
 - **Sandbox (PR #5, fora desta base):** material de demonstracao/reavaliacao offline opcional. Isola um avaliador fixo sobre dados produzidos pelo backend; nao isola codigo gerado por LLM e nao sustenta "Blast Radius Zero". Integracao automatica adiada.
 - **Trilha do hackathon:** nao confirmada; conferir o regulamento. Comercializacao e hipotese.
 
 ## Verificado (com evidencia)
 
-- **344 testes passando** em Python 3.12.3 e 3.13, com Salesforce e Vultr **simulados**. Mutacoes verificadas nas travas novas (normalizacao de Id, reserva por 15 caracteres, Task extra, travas de cobertura).
+- **377 testes passando** em Python 3.12.3 e 3.13, com Salesforce e Vultr **simulados**. Mutacoes verificadas nas travas novas (normalizacao de Id, reserva por 15 caracteres, Task extra, travas de cobertura).
 - Operador, com org real e CLI (registros anteriores a esta branch): plano Vultr com Describe, vinculo de Case, aprovacao por hash, execucao Agentforce, seis verificacoes `passed`; `make docker-test` na VM (197 testes na epoca); fumaca real do planner (deepseek-v4.1-flash-1017, 1 chamada, ~1,4-1,7 mil tokens). Evidencia informada pelo operador, nao reexecutada por mim.
 - Conjunto rotulado de cobertura (`tests/data/rule_coverage_labeled.json`, 20 regras, 33 clausulas): modelo-oraculo simulado acerta 33/33; modelo "otimista" simulado (declara tudo coberto) so produz 2 falsas coberturas, ambas lacunas conhecidas e marcadas `known_gap`.
 
@@ -31,6 +32,7 @@ Repositorio: https://github.com/Ralado51/action-guard (publico). Dados sintetico
 
 ## Pendencias reais
 
+- Rodar a auditoria na org real (somente leitura, exige sua execucao na VM) com Cases sinteticos, alguns com defeito, e registrar o resultado.
 - Rodar a avaliacao de cobertura com o modelo real e registrar resultados (falsa cobertura deve ser 0).
 - Demo: mostrar primeiro a falha real do motivo vazio (exige versao defeituosa do Flow ou flag, e aprovacao explicita para execucao real), depois o fluxo corrigido.
 - Decidir trilha; decidir estrategia de merge (sugestao: consolidar #2-#4 e esta branch, deixar #5 fora).

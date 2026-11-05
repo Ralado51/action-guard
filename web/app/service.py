@@ -22,6 +22,11 @@ from planner import bind_case, create_plan, ready_for_approval
 from planner import policy
 from planner.context import parse_action, parse_metadata
 from planner.service import _validators
+from audit.explain import explain as audit_explain
+from audit.run import AuditBlocked, run_audit
+from planner.client import VultrChatClient
+from planner.config import PlannerConfig
+from planner.errors import PlannerError
 
 
 class WorkflowError(Exception):
@@ -156,6 +161,31 @@ class Workflow:
                 plan['approval']['coverage_acknowledged'] = clauses
             self._put(db, 'plans', key, entry)
         return plan
+
+    def audit(self, key, case_ids, since, modified_by, limit, explain):
+        """Auditoria SOMENTE LEITURA com o plano aprovado como modelo da regra. Nao reserva Case nem executa acao."""
+        with self.connect() as db:
+            plan = self._get(db, 'plans', key)['plan']
+        if not approval_is_valid(plan):
+            raise WorkflowError(409, 'Aprove a versao atual do plano antes de auditar.')
+        cfg = SalesforceConfig.from_env()
+        http = UrllibTransport()
+        try:
+            rest = SalesforceRest(cfg, get_token(cfg, http), http)
+            report = run_audit(plan, rest, case_ids=case_ids, since=since, modified_by=modified_by, limit=limit)
+        except AuditBlocked as e:
+            raise WorkflowError(422, str(e)) from None
+        except ValueError as e:
+            raise WorkflowError(422, str(e)) from None
+        except AuthError:
+            raise WorkflowError(502, 'Falha de autenticacao no Salesforce.') from None
+        if explain:
+            try:
+                audit_explain(report, VultrChatClient(PlannerConfig.from_env(), http))
+            except PlannerError as e:
+                report['summary']['model_error'] = e.category
+        EvidenceStore(self.root / 'audits', report['audit_id']).save('audit_report', report)
+        return report
 
     def reserve(self, key, expected_hash):
         # Configuration must be present before a durable reservation is consumed.
