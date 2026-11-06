@@ -66,6 +66,17 @@ def check_row_consistency(row: dict[str, Any]) -> None:
     if (row.get("status") == CORRECT) != all_passed:
         raise FindingError("The report is inconsistent: the Case status does not follow from its per-check results.")
 
+def check_ids(row: dict[str, Any]) -> list[str]:
+    ids = [c.get("check_id") for c in row.get("checks") or []]
+    if len(ids) != len(set(ids)):
+        raise FindingError("The report is inconsistent: a check appears more than once.")
+    return sorted(ids)
+
+
+def observed_ids(policy: dict[str, Any]) -> list[str]:
+    return sorted(c["check_id"] for c in policy.get("conditions", []) if c.get("observed"))
+
+
 class FindingStore:
     def __init__(self, directory: str | os.PathLike, clock=_now):
         self.dir, self.clock = Path(directory), clock
@@ -128,8 +139,11 @@ class FindingStore:
         policy = report.get("policy")
         if not policy:
             raise FindingError("The report has no policy block; run the audit again.")
+        expected = observed_ids(policy)
         for c in report["cases"]:
             check_row_consistency(c)        # a row marked correct that hides a failed check must not slip through
+            if check_ids(c) != expected:
+                raise FindingError("The report is incomplete: the Case rows do not carry exactly the checks the policy observes.")
         existing = {s["case_id"] for s in self.list() if s["state"] not in TERMINAL}
         opened = []
         for c in report["cases"]:
@@ -140,7 +154,7 @@ class FindingStore:
             self._append({"finding_id": fid, "type": "opened", "actor": actor, "note": None, "data": {
                 "case_id": c["case_id"], "severity": sev, "failed_checks": c["failed_checks"],
                 "inconclusive_checks": c["inconclusive_checks"], "audit_id": report["audit_id"],
-                "plan_hash": report["plan_hash"], "report_hash": report_hash(report),
+                "plan_hash": report["plan_hash"], "report_hash": report_hash(report), "expected_checks": expected,
                 "found": {k["check_id"]: k["found"] for k in c.get("checks", []) if k["status"] != "passed"}}})
             opened.append(fid)
         return opened
@@ -179,6 +193,12 @@ class FindingStore:
         if row is None:
             raise FindingError("The new audit does not include this Case (use --list-all or its Id).")
         check_row_consistency(row)
+        opened = next(e for e in s["events"] if e["type"] == "opened")["data"]
+        expected = opened.get("expected_checks")
+        if expected is None:
+            raise FindingError("This finding was opened before completeness checks existed; it cannot be revalidated safely.")
+        if check_ids(row) != sorted(expected):
+            raise FindingError("The report is incomplete or has unknown checks: the Case must carry exactly the checks that were required when the finding opened.")
         passed = row["status"] == CORRECT
         self._append({"finding_id": fid, "type": "revalidated", "actor": actor, "note": None, "data": {
             "passed": passed, "audit_id": report["audit_id"], "report_hash": report_hash(report), "case_status": row["status"]}})
