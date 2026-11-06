@@ -37,3 +37,4 @@ a.cell{transition:transform .12s}a.cell:hover{transform:translateY(-3px)}
 .side .miss{margin:0 0 8px}
 .trace{margin:18px 0;font-size:13px;color:var(--muted)}.trace ol{padding-left:20px}.trace li{margin:6px 0;overflow-wrap:anywhere}
 .switch{display:flex;flex-wrap:wrap;gap:8px;margin:26px 0 0}
+.execs{margin:6px 0 28px;max-width:760px}.exec-row{display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-top:1px solid var(--line);font-size:15px}.exec-row span{color:var(--muted)}

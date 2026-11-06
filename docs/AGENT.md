@@ -32,3 +32,15 @@ final message, outcome and write count.
 
 - It is not an isolated sandbox; it limits *where* the agent can write, not what code it could run.
 - With a handful of Cases no ranking between agents is possible or claimed.
+
+## Second executor: Agentforce on the same Cases
+
+```bash
+python -m agentforce_runner run --authorized agent_runs/authorized.json --limit 10 --confirm-write
+python -m audit run --plan approved_plan.json --case-ids ids.txt \
+    --agent-runs vultr-run-XXXX/claims.json --agent-runs agentforce-run-YYYY/claims.json --list-all
+```
+
+Each Case is sent to the Agentforce Agent API once (never repeated; an uncertain outcome stops the run). Its reply is stored as a
+claim. The audit labels every Case with its executor and shows counts per executor, never a ranking: the samples are small and the
+two agents receive different instructions (Agentforce keeps its original instruction; the Vultr agent gets the business rule).

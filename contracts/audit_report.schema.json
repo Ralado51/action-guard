@@ -278,6 +278,9 @@
                     }
                   }
                 }
+              },
+              "source": {
+                "type": "string"
               }
             }
           }

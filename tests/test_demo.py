@@ -95,3 +95,13 @@ def test_published_recorded_run_is_masked_valid_and_consistent(validator):
     ids = [c["case_id"] for c in r["cases"]]
     assert len(ids) == len(set(ids)) == r["totals"]["evaluated"]
     assert r["totals"]["correct"] == sum(c["status"] == "correct" for c in r["cases"])
+
+
+def test_audit_merges_two_executors_and_keeps_their_source_labels():
+    from tests.test_audit import make_case, rest_for, sim, run_audit, approved_plan
+    fake = sim.FakeSalesforce(); fake.cases.clear()
+    a, b = make_case(fake, 1), make_case(fake, 2)
+    runs = {a[:15]: {"source": "vultr-agent", "outcome": "finished", "final_message": "x", "steps": []},
+            b[:15]: {"source": "agentforce", "outcome": "finished", "final_message": "y", "steps": []}}
+    r = run_audit(approved_plan(), rest_for(fake), case_ids=[a, b], agent_runs=runs, list_all=True)
+    assert [c["agent"]["source"] for c in r["cases"]] == ["vultr-agent", "agentforce"]
