@@ -220,11 +220,11 @@ function render() { if (data) overview(data); }
 
 async function route() {
   const h = location.hash || '#/';
-  const view = h.startsWith('#/setup') ? 'setup' : h.startsWith('#/case/') ? 'case' : 'results';
-  ['results', 'case', 'setup'].forEach(v => { $('#view-' + v).hidden = v !== view; });
-  $('#tab-results').classList.toggle('on', view !== 'setup'); $('#tab-setup').classList.toggle('on', view === 'setup');
-  $('#tab-results').toggleAttribute('aria-current', view !== 'setup'); $('#tab-setup').toggleAttribute('aria-current', view === 'setup');
+  const view = h.startsWith('#/setup') ? 'setup' : h.startsWith('#/acceptance') ? 'acceptance' : h.startsWith('#/case/') ? 'case' : 'results';
+  ['results', 'case', 'setup', 'acceptance'].forEach(v => { $('#view-' + v).hidden = v !== view; });
+  ['results', 'acceptance', 'setup'].forEach(t => { const on = (t === 'results') ? (view === 'results' || view === 'case') : view === t; $('#tab-' + t).classList.toggle('on', on); $('#tab-' + t).toggleAttribute('aria-current', on); });
   if (view === 'setup') return;
+  if (view === 'acceptance') { window.AG && window.AG.showAcceptance && window.AG.showAcceptance(); window.scrollTo(0, 0); return; }
   try {
     if (source === null) { await probeRecorded(); source = hasRecorded ? 'real' : 'demo'; }
     if (!(data && source === 'live')) await loadSource(source);
