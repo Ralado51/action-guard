@@ -2,7 +2,7 @@
 (() => {
 const $ = s => document.querySelector(s);
 const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
-const WORD = { correct: 'Met the rule', incorrect: 'Did not meet the rule', inconclusive: 'Cannot be confirmed' };
+const WORD = { correct: 'Passed all checks', incorrect: 'Failed a check', inconclusive: 'Cannot be confirmed' };
 const CHECK = { passed: 'Passed', failed: 'Failed', inconclusive: 'Not confirmed' };
 let data = null, filter = 'all';
 
@@ -16,19 +16,19 @@ async function loadDemo() {
 }
 
 // Real audit reports list only failing records; the rest are anonymous "met the rule" cells.
-function fromReport(r, planName) {
+function fromReport(r) {
   const t = r.totals, by = Object.fromEntries(r.by_check.map(c => [c.check_id, c.description]));
-  const cases = r.cases.map(c => ({
-    case_id: c.case_id, subject: null, status: c.status,
-    finding: c.status === 'incorrect'
-      ? 'The agent reported success, but ' + c.failed_checks.map(x => (by[x] || x).replace(/\.$/, '').toLowerCase() + ' was not met').join(' and ') + '.'
-      : 'The outcome cannot be confirmed from the data that was read.',
-    agent_claim: null,
-    checks: [...c.failed_checks.map(x => ({ check_id: x, description: by[x] || x, status: 'failed', expected: null, found: JSON.stringify((c.evidence || {})[x] ?? '') })),
-             ...c.inconclusive_checks.map(x => ({ check_id: x, description: by[x] || x, status: 'inconclusive', expected: null, found: 'Could not be read' }))],
-  }));
+  const cases = r.cases.map(c => {
+    const checks = c.checks || [...c.failed_checks.map(x => ({ check_id: x, description: by[x] || x, status: 'failed', expected: '—', found: JSON.stringify((c.evidence || {})[x] ?? '') })),
+                                ...c.inconclusive_checks.map(x => ({ check_id: x, description: by[x] || x, status: 'inconclusive', expected: '—', found: 'Could not be read' }))];
+    const failed = checks.filter(k => k.status === 'failed').map(k => k.description.replace(/\.$/, ''));
+    return { case_id: c.case_id, subject: null, status: c.status, agent_claim: null, checks,
+      finding: c.status === 'incorrect' ? 'Reported as closed, but ' + (failed.length === 1 ? 'a required check failed.' : failed.length + ' required checks failed.') : 'Reported as closed, but the data could not be read well enough to confirm the outcome.' };
+  });
+  const sel = r.selection.mode === 'case_ids' ? 'List of Cases reported by the agent' : 'Window of closed Cases';
   return { synthetic: false, label: null, agent_reported: t.evaluated, totals: t, outcome_rate: r.outcome_rate, by_check: r.by_check,
-           not_auditable: r.not_auditable, limitations: r.limitations.concat(r.collection_errors || []), cases, onlyListed: true, summary: r.summary };
+           not_auditable: r.not_auditable, limitations: r.limitations.concat(r.collection_errors || []), cases, onlyListed: true, summary: r.summary,
+           basis: { plan_version: r.plan_version, plan_hash: r.plan_hash, generated_at: r.generated_at, selection: sel } };
 }
 
 function strip(d) {
@@ -75,7 +75,7 @@ function records(d) {
   const box = el('section', 'block');
   box.append(el('h2', '', 'Records'));
   const bar = el('div', 'filters');
-  [['all', 'All'], ['incorrect', 'Did not meet the rule'], ['inconclusive', 'Cannot be confirmed'], ['correct', 'Met the rule']].forEach(([k, t]) => {
+  [['all', 'All'], ['incorrect', 'Failed a check'], ['inconclusive', 'Cannot be confirmed'], ['correct', 'Passed all checks']].forEach(([k, t]) => {
     if (d.onlyListed && k === 'correct') return;
     const n = k === 'all' ? d.cases.length : d.cases.filter(c => c.status === k).length;
     const b = el('button', 'chip' + (filter === k ? ' on' : ''), t + ' · ' + n);
@@ -92,7 +92,7 @@ function records(d) {
     const li = el('li'), a = el('a', 'rec ' + c.status);
     a.href = '#/case/' + c.case_id;
     a.append(el('span', 'dot'), el('span', 'rec-main', c.subject || 'Case ' + c.case_id),
-             el('span', 'rec-find', c.status === 'correct' ? WORD.correct : c.finding.replace(/^The agent reported success, but /, '').replace(/^./, m => m.toUpperCase())));
+             el('span', 'rec-find', c.status === 'correct' ? WORD.correct : c.finding.replace(/^(The agent reported success|Reported as closed), but /, '').replace(/^./, m => m.toUpperCase())));
     li.append(a); ul.append(li);
   });
   box.append(ul);
@@ -100,20 +100,32 @@ function records(d) {
   return box;
 }
 
+function basisLine(d) {
+  const b = d.basis || {}, p = el('p', 'basis');
+  const bits = [];
+  if (b.plan_version) bits.push('Plan v' + b.plan_version);
+  if (b.plan_hash) bits.push(b.plan_hash.slice(0, 14) + '…');
+  if (b.generated_at) bits.push('audited ' + b.generated_at.replace('T', ' ').replace('Z', ' UTC'));
+  if (b.selection) bits.push(b.selection);
+  p.textContent = 'Basis: ' + (bits.join(' · ') || '—') + (b.note ? '. ' + b.note : '');
+  return p;
+}
+
 function overview(d) {
   const root = $('#results'); root.replaceChildren();
   const t = d.totals, bad = t.incorrect, unc = t.inconclusive;
   const head = el('div', 'verdict');
   head.append(el('p', 'said', 'Your agent reported ' + d.agent_reported + ' Cases closed.'));
-  head.append(el('h1', '', t.correct === d.agent_reported ? 'All ' + t.correct + ' met the business rule.' : t.correct + ' met the business rule.'));
+  head.append(el('h1', '', (t.correct === d.agent_reported ? 'All ' + t.correct : t.correct) + ' passed every auditable check.'));
   const sub = [];
-  if (bad) sub.push(bad + ' did not meet it');
+  if (bad) sub.push(bad + ' failed at least one');
   if (unc) sub.push(unc + ' cannot be confirmed');
-  head.append(el('p', 'tally', (sub.length ? sub.join(' and ') + '. ' : '') + 'Rate: ' + pct(d.outcome_rate) + ' of audited Cases met every auditable check; unconfirmed ones never count as correct.'));
+  head.append(el('p', 'tally', (sub.length ? sub.join(' and ') + '. ' : '') + 'Rate: ' + pct(d.outcome_rate) + '. Unconfirmed Cases never count as correct.' + (d.not_auditable && d.not_auditable.length ? ' ' + d.not_auditable.length + ' checks in the plan are not verified here, so this is not a full verdict on the rule.' : '')));
   root.append(head);
+  root.append(basisLine(d));
   root.append(strip(d));
   const legend = el('p', 'legend');
-  [['correct', 'Met the rule'], ['incorrect', 'Did not meet it'], ['inconclusive', 'Cannot be confirmed']].forEach(([k, t2]) => { const s = el('span', 'key'); s.append(el('i', 'sw ' + k), document.createTextNode(t2)); legend.append(s); });
+  [['correct', 'Passed all checks'], ['incorrect', 'Failed a check'], ['inconclusive', 'Cannot be confirmed']].forEach(([k, t2]) => { const s = el('span', 'key'); s.append(el('i', 'sw ' + k), document.createTextNode(t2)); legend.append(s); });
   root.append(legend);
   if (d.summary && d.summary.text) root.append(el('p', 'summary', d.summary.text));
   const grid = el('div', 'cols'); grid.append(failuresByRule(d), records(d)); root.append(grid);
@@ -128,11 +140,14 @@ function detail(id) {
   if (idx < 0) { root.append(el('h1', '', 'Record not found'), el('p', 'muted', 'Open the results first, then choose a record.')); return; }
   const c = data.cases[idx];
   root.append(el('p', 'said', (c.subject || 'Case') + ' · ' + c.case_id + (data.synthetic ? ' · synthetic' : '')));
-  root.append(el('h1', c.status, c.status === 'correct' ? 'This Case met the business rule.' : c.finding));
+  root.append(el('h1', c.status, c.status === 'correct' ? 'This Case passed every auditable check.' : c.finding));
   if (c.agent_claim || c.status !== 'correct') {
     const two = el('div', 'versus');
-    const l = el('div', 'side'); l.append(el('h2', '', 'What the agent said'), el('p', 'quote', c.agent_claim ? '“' + c.agent_claim + '”' : 'No agent response is attached to this audit.'));
-    const r = el('div', 'side ' + c.status); r.append(el('h2', '', 'What the data shows'), el('p', '', c.status === 'correct' ? 'Every auditable check passed.' : c.finding.replace(/^The agent reported success, but /, '').replace(/^./, m => m.toUpperCase())));
+    const l = el('div', 'side'); l.append(el('h2', '', 'What the agent said'), el('p', 'quote', c.agent_claim ? '“' + c.agent_claim + '”' : 'No agent response is attached to this audit. The Case was on the list of Cases reported as closed.'));
+    const r = el('div', 'side ' + c.status); r.append(el('h2', '', 'What the data shows'));
+    if (c.status === 'correct') r.append(el('p', '', 'Every auditable check passed.'));
+    else if (data.synthetic) r.append(el('p', '', c.finding.replace(/^The agent reported success, but /, '').replace(/^./, m => m.toUpperCase())));
+    else c.checks.filter(k => k.status !== 'passed').forEach(k => r.append(el('p', 'miss', k.description.replace(/\.$/, '') + ': expected ' + (k.expected || '—') + ', found ' + k.found + '.')));
     two.append(l, r); root.append(two);
   }
   const tbl = el('table', 'ef');

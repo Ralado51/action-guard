@@ -21,7 +21,7 @@ def test_failures_show_expected_vs_found_and_inconclusive_never_counts_as_correc
     row = next(k for k in empty["checks"] if k["check_id"] == "chk_reason_filled")
     assert (row["status"], row["found"]) == ("failed", "Empty")
     dup = next(c for c in d["cases"] if "2 follow-up Tasks" in c["finding"])
-    assert next(k for k in dup["checks"] if k["check_id"] == "chk_followup_task")["found"] == "2 follow-up Tasks"
+    assert next(k for k in dup["checks"] if k["check_id"] == "chk_followup_task")["found"] == "2 matching Tasks"
     unread = [c for c in d["cases"] if c["status"] == "inconclusive"]
     assert len(unread) == 1 and d["totals"]["correct"] == 13
 
@@ -36,3 +36,15 @@ def test_demo_endpoint_is_public_and_needs_no_token(monkeypatch):
     monkeypatch.setenv("ACTION_GUARD_API_TOKEN", "t" * 40)
     r = TestClient(app).get("/api/demo/audit")
     assert r.status_code == 200 and r.json()["synthetic"] is True
+
+
+def test_real_audit_report_carries_expected_and_found_per_check(tmp_path):
+    from tests.test_audit import make_case, rest_for, sim, run_audit, approved_plan
+    fake = sim.FakeSalesforce(); fake.cases.clear()
+    ids = [make_case(fake, 1, reason=None), make_case(fake, 2, tasks=2)]
+    r = run_audit(approved_plan(), rest_for(fake), case_ids=ids)
+    by = {c["case_id"]: {k["check_id"]: k for k in c["checks"]} for c in r["cases"]}
+    empty = by[ids[0]]["chk_reason_filled"] if "chk_reason_filled" in by[ids[0]] else next(k for k in by[ids[0]].values() if k["status"] == "failed")
+    assert empty["status"] == "failed" and empty["found"] == "Empty" and empty["expected"] == "A value is recorded"
+    dup = next(k for k in by[ids[1]].values() if k["status"] == "failed")
+    assert dup["expected"] == "1 matching Task" and dup["found"] == "2 matching Tasks"
