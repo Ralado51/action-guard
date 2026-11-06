@@ -59,3 +59,12 @@ def test_committed_recorded_flow_verifies_and_has_no_salesforce_ids():
     d = json.loads(raw)
     assert d["calibration"]["detected"] == d["calibration"]["injected"] and d["bundles"]
     assert all(verify_bundle(b) == [] and b["manifest"]["masked"] for b in d["bundles"])
+
+
+def test_landing_is_the_guided_story_and_story_assets_are_served():
+    from web.app import main as m
+    c = TestClient(m.app)
+    html = c.get("/").text
+    assert 'id="tab-story"' in html and 'id="view-story"' in html and "/static/story.js" in html
+    js = c.get("/static/story.js")
+    assert js.status_code == 200 and "fault injected by us" in js.text.lower() or "injected by us" in js.text
