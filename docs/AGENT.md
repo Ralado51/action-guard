@@ -44,3 +44,11 @@ python -m audit run --plan approved_plan.json --case-ids ids.txt \
 Each Case is sent to the Agentforce Agent API once (never repeated; an uncertain outcome stops the run). Its reply is stored as a
 claim. The audit labels every Case with its executor and shows counts per executor, never a ranking: the samples are small and the
 two agents receive different instructions (Agentforce keeps its original instruction; the Vultr agent gets the business rule).
+
+## Reservation ledger (no re-sending)
+
+Both runners write `ledger.jsonl` next to `authorized.json` and reserve each Case **before** sending anything. A Case that is
+already in the ledger is skipped on every later run, whatever happened the first time (finished, uncertain, or a crash after the
+reservation), because re-sending could duplicate Tasks. Cases from earlier run folders are imported as already handled. To try
+again, reconcile the Case in Salesforce and use a new Case. A refusal *after* a message was sent is not treated as proof that
+nothing ran: the run stops and the Case must be checked.

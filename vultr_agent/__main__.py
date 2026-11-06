@@ -18,6 +18,7 @@ from pathlib import Path
 from connector.auth import AuthError, get_token
 from connector.config import ConfigError, SalesforceConfig
 from connector.ids import key15
+from connector.ledger import Ledger
 from connector.rest import QueryError, SalesforceRest
 from connector.transport import UrllibTransport
 from planner.client import VultrChatClient
@@ -77,16 +78,21 @@ def main(argv=None, *, transport=None, secret=None) -> int:
         run_dir = auth_path.parent / ("vultr-run-" + uuid.uuid4().hex[:8])
         run_dir.mkdir(parents=True)
         cfg = dataclasses.replace(PlannerConfig.from_env(), max_calls=args.max_steps)
+        ledger = Ledger(auth_path.parent); ledger.import_existing()
         client, claims, done = VultrChatClient(cfg, http), {}, 0
         for idx, cid in enumerate(authorized):
             if done >= args.limit:
                 break
+            if not ledger.reserve(cid, "vultr"):
+                print(f"{cid}: skipped (already handled or reserved by an earlier run; never run twice).")
+                continue
             tools = SalesforceTools(rest, Guard(frozenset({key15(cid)}), max_writes=3))
             ev = run_agent(client, tools, cid, REASONS[idx % len(REASONS)], model=cfg.model, max_steps=args.max_steps)
             (run_dir / f"{key15(cid)}.json").write_text(json.dumps(ev, indent=2, ensure_ascii=False))
             claims[cid] = {"source": "vultr-agent", "outcome": ev["outcome"], "final_message": ev["final_message"],
                            "steps": [{"at": st["at"], "tool": (st.get("request") or {}).get("tool") or ("final" if st.get("final") else st.get("error", "none")),
                                       "result": json.dumps(st["result"])[:300] if "result" in st else None} for st in ev["steps"]]}
+            ledger.record(cid, "vultr", ev["outcome"])
             print(f"{cid}: {ev['outcome']} · {len(ev['steps'])} steps · {ev['writes']} writes")
             done += 1
             if ev["outcome"] == "uncertain_write":
