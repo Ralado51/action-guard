@@ -8,11 +8,32 @@ let data = null, filter = 'all';
 
 function pct(r) { return r === null || r === undefined ? '—' : (r * 100).toFixed(1).replace(/\.0$/, '') + '%'; }
 
-async function loadDemo() {
-  if (data && data.synthetic) return data;
+let source = null, recorded = null, hasRecorded = false;
+
+async function loadSource(name) {
+  if (name === 'live' && data && !data.synthetic) return data;
+  if (name === 'real') {
+    if (!recorded) { const r = await fetch('/api/recorded-run', { cache: 'no-store' }); if (!r.ok) throw Error('No recorded run is published.'); recorded = fromReport(await r.json()); recorded.recordedNote = true; }
+    return (data = recorded);
+  }
   const r = await fetch('/api/demo/audit', { cache: 'no-store' });
   if (!r.ok) throw Error('The demonstration could not be loaded.');
   return (data = await r.json());
+}
+
+async function probeRecorded() {
+  try { const r = await fetch('/api/recorded-run', { method: 'HEAD', cache: 'no-store' }); hasRecorded = r.ok || r.status === 405; if (r.status === 405) { const g = await fetch('/api/recorded-run', { cache: 'no-store' }); hasRecorded = g.ok; } } catch { hasRecorded = false; }
+}
+
+function drawSwitch() {
+  const box = $('#source-switch'); box.replaceChildren();
+  box.hidden = !hasRecorded || source === 'live';
+  if (box.hidden) return;
+  [['real', 'Recorded real run'], ['demo', 'Synthetic demonstration']].forEach(([k, t]) => {
+    const b = el('button', 'chip' + (source === k ? ' on' : ''), t); b.type = 'button'; b.setAttribute('aria-pressed', source === k);
+    b.onclick = () => { source = k; filter = 'all'; location.hash = '#/'; route(); };
+    box.append(b);
+  });
 }
 
 // Real audit reports list only failing records; the rest are anonymous "met the rule" cells.
@@ -21,13 +42,19 @@ function fromReport(r) {
   const cases = r.cases.map(c => {
     const checks = c.checks || [...c.failed_checks.map(x => ({ check_id: x, description: by[x] || x, status: 'failed', expected: '—', found: JSON.stringify((c.evidence || {})[x] ?? '') })),
                                 ...c.inconclusive_checks.map(x => ({ check_id: x, description: by[x] || x, status: 'inconclusive', expected: '—', found: 'Could not be read' }))];
-    const failed = checks.filter(k => k.status === 'failed').map(k => k.description.replace(/\.$/, ''));
-    return { case_id: c.case_id, subject: null, status: c.status, agent_claim: null, checks,
-      finding: c.status === 'incorrect' ? 'Reported as closed, but ' + (failed.length === 1 ? 'a required check failed.' : failed.length + ' required checks failed.') : 'Reported as closed, but the data could not be read well enough to confirm the outcome.' };
+    const nFailed = checks.filter(k => k.status === 'failed').length;
+    const ag = c.agent || null, said = ag && ag.outcome === 'finished';
+    const lead = said ? 'The agent said it was done, but ' : 'Reported as closed, but ';
+    return { case_id: c.case_id, subject: null, status: c.status, agent_claim: said ? ag.final_message : null, agent: ag, checks,
+      finding: c.status === 'correct' ? 'Every auditable check passed.'
+        : c.status === 'incorrect' ? lead + (nFailed === 1 ? 'a required check failed.' : nFailed + ' required checks failed.')
+        : lead + 'the data could not be read well enough to confirm the outcome.' };
   });
   const sel = r.selection.mode === 'case_ids' ? 'List of Cases reported by the agent' : 'Window of closed Cases';
-  return { synthetic: false, label: null, agent_reported: t.evaluated, totals: t, outcome_rate: r.outcome_rate, by_check: r.by_check,
-           not_auditable: r.not_auditable, limitations: r.limitations.concat(r.collection_errors || []), cases, onlyListed: true, summary: r.summary,
+  const hasAgent = cases.some(c => c.agent);
+  return { synthetic: false, label: hasAgent ? 'Recorded real run: a Vultr-hosted agent acted on synthetic Cases in a Salesforce developer org; Action Guard then audited the records read-only. Salesforce Ids are masked. A small run says little about how often the agent fails.' : null,
+           agent_reported: t.evaluated, totals: t, outcome_rate: r.outcome_rate, by_check: r.by_check,
+           not_auditable: r.not_auditable, limitations: r.limitations.concat(r.collection_errors || []), cases, onlyListed: !r.all_cases_listed, summary: r.summary,
            basis: { plan_version: r.plan_version, plan_hash: r.plan_hash, generated_at: r.generated_at, selection: sel } };
 }
 
@@ -47,7 +74,7 @@ function strip(d) {
 
 function failuresByRule(d) {
   const box = el('section', 'block');
-  box.append(el('h2', '', 'Where the agent fell short'));
+  box.append(el('h2', '', d.totals.incorrect + d.totals.inconclusive ? 'Where the agent fell short' : 'What each check found'));
   const rows = d.by_check.slice().sort((a, b) => (b.failed + b.inconclusive) - (a.failed + a.inconclusive));
   const total = d.totals.evaluated || 1;
   rows.forEach(c => {
@@ -143,7 +170,7 @@ function detail(id) {
   root.append(el('h1', c.status, c.status === 'correct' ? 'This Case passed every auditable check.' : c.finding));
   if (c.agent_claim || c.status !== 'correct') {
     const two = el('div', 'versus');
-    const l = el('div', 'side'); l.append(el('h2', '', 'What the agent said'), el('p', 'quote', c.agent_claim ? '“' + c.agent_claim + '”' : 'No agent response is attached to this audit. The Case was on the list of Cases reported as closed.'));
+    const l = el('div', 'side'); l.append(el('h2', '', 'What the agent said'), el('p', 'quote', c.agent_claim ? '“' + c.agent_claim + '”' : (c.agent ? 'The agent run ended without a final report (' + c.agent.outcome + ').' : 'No agent response is attached to this audit. The Case was on the list of Cases reported as closed.')));
     const r = el('div', 'side ' + c.status); r.append(el('h2', '', 'What the data shows'));
     if (c.status === 'correct') r.append(el('p', '', 'Every auditable check passed.'));
     else if (data.synthetic) r.append(el('p', '', c.finding.replace(/^The agent reported success, but /, '').replace(/^./, m => m.toUpperCase())));
@@ -161,6 +188,11 @@ function detail(id) {
     tb.append(tr);
   });
   tbl.append(tb); root.append(tbl);
+  if (c.agent && c.agent.steps && c.agent.steps.length) {
+    const det = el('details', 'trace'); det.append(el('summary', '', 'What the agent did, step by step (' + c.agent.steps.length + ')'));
+    const ol = el('ol'); c.agent.steps.forEach(x => ol.append(el('li', '', x.at.replace('T', ' ').replace('Z', ' UTC') + ' · ' + x.tool + (x.result ? ' → ' + x.result : ''))));
+    det.append(ol); root.append(det);
+  }
   if (data.not_auditable && data.not_auditable.length) root.append(el('p', 'muted', data.not_auditable.length + ' other checks of the plan need the state before the agent acted, so this audit does not claim them.'));
   const nav = el('div', 'pager');
   if (idx > 0) { const p = el('a', '', 'Previous record'); p.href = '#/case/' + data.cases[idx - 1].case_id; nav.append(p); }
@@ -177,14 +209,18 @@ async function route() {
   $('#tab-results').classList.toggle('on', view !== 'setup'); $('#tab-setup').classList.toggle('on', view === 'setup');
   $('#tab-results').toggleAttribute('aria-current', view !== 'setup'); $('#tab-setup').toggleAttribute('aria-current', view === 'setup');
   if (view === 'setup') return;
-  try { if (!data) await loadDemo(); } catch (e) { $('#results').replaceChildren(el('p', 'muted', e.message)); return; }
+  try {
+    if (source === null) { await probeRecorded(); source = hasRecorded ? 'real' : 'demo'; }
+    if (!(data && source === 'live')) await loadSource(source);
+  } catch (e) { $('#results').replaceChildren(el('p', 'muted', e.message)); return; }
+  drawSwitch();
   const flag = $('#synthetic-flag'); flag.hidden = !data.label; flag.textContent = data.label || '';
   if (view === 'case') detail(decodeURIComponent(h.slice(7))); else { overview(data); }
   window.scrollTo(0, 0);
 }
 
-window.AG = { showReal(report) { data = fromReport(report); filter = 'all'; location.hash = '#/'; route(); },
-              showDemo() { data = null; filter = 'all'; route(); } };
+window.AG = { showReal(report) { data = fromReport(report); source = 'live'; filter = 'all'; location.hash = '#/'; route(); },
+              showDemo() { source = null; data = null; filter = 'all'; route(); } };
 window.addEventListener('hashchange', route);
 route();
 })();

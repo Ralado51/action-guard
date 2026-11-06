@@ -191,7 +191,8 @@
           "status": {
             "enum": [
               "incorrect",
-              "inconclusive"
+              "inconclusive",
+              "correct"
             ]
           },
           "failed_checks": {
@@ -240,6 +241,42 @@
                 },
                 "found": {
                   "type": "string"
+                }
+              }
+            }
+          },
+          "agent": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "outcome": {
+                "type": "string"
+              },
+              "final_message": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "steps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "at": {
+                      "type": "string"
+                    },
+                    "tool": {
+                      "type": "string"
+                    },
+                    "result": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  }
                 }
               }
             }
@@ -312,6 +349,9 @@
           "type": "string"
         }
       }
+    },
+    "all_cases_listed": {
+      "type": "boolean"
     }
   }
 }
