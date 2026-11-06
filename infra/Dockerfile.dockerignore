@@ -13,6 +13,12 @@
 !planner/**
 !audit/
 !audit/**
+!acceptance/
+!acceptance/**
+!calibration/
+!calibration/**
+!vultr_agent/
+!vultr_agent/**
 !web/
 !web/**
 !infra/
