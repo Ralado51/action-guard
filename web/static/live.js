@@ -24,8 +24,9 @@ function table(row) {
 }
 
 function banner(d) {
-  const b = el('div', 'banner ' + (d.accepted ? 'ok' : 'bad'));
-  b.append(el('b', '', d.accepted ? 'Result accepted: every condition we can verify was met.' : 'Result not accepted: ' + (d.severity === 'critical' ? 'a required condition failed.' : 'an operational condition failed.')));
+  const inc = d.status === 'inconclusive';
+  const b = el('div', 'banner ' + (d.accepted ? 'ok' : inc ? 'wait' : 'bad'));
+  b.append(el('b', '', d.accepted ? 'Result accepted: every condition we can verify was met.' : inc ? 'Result not confirmed: Action Guard could not verify every condition, so it does not accept the result yet.' : 'Result not accepted: ' + (d.severity === 'critical' ? 'a required condition failed.' : 'an operational condition failed.')));
   return b;
 }
 
@@ -48,30 +49,47 @@ function poll() {
   if (view && (view.state === 'running')) timer = setTimeout(async () => { try { view = await api('/sessions/' + view.session_id); } catch (e) { error = e.message; } draw(); poll(); }, 2000);
 }
 
+function agreement() {
+  const d = el('section', 'card'); d.append(el('h3', '', 'What was agreed'));
+  d.append(el('p', '', 'The team already resolved the customer’s issue. The task given to the agent is only to record it in Salesforce:'));
+  const ul = el('ul', 'plain'); ['Close the Case', 'Record a closure reason', 'Create exactly one follow-up Task'].forEach(t => ul.append(el('li', '', t)));
+  d.append(ul, el('p', 'muted', 'Action Guard will check these three conditions in the Salesforce record. It does not judge whether the customer’s issue was resolved.'));
+  return d;
+}
+
 function startForm() {
-  const f = el('form', 'live-form');
-  f.append(el('h2', '', 'Open a test Case and check the result'));
-  f.append(el('p', 'st-lead', 'You pick a customer situation. A synthetic Case is created in a Salesforce developer org. You then see an agent handle it, or test the verifier with a controlled fault, and Action Guard checks the record.'));
+  const w = el('div', 'live'); w.append(agreement());
+  const f = el('form', 'live-form card');
+  f.append(el('h3', '', 'You are the customer'));
   const lc = el('label', '', 'Access code'); lc.setAttribute('for', 'live-code');
   const code = el('input'); code.id = 'live-code'; code.type = 'password'; code.autocomplete = 'off'; code.required = true;
   f.append(lc, code);
-  f.append(el('p', 'muted', 'The customer message is chosen from a fixed list. You do not type anything the agent will read.'));
-  const sc = el('fieldset'); sc.append(el('legend', '', 'Customer situation'));
-  status.scenarios.forEach((s, i) => { const l = el('label', 'opt'); const r = el('input'); r.type = 'radio'; r.name = 'sc'; r.value = s.key; r.checked = i === 0; l.append(r, el('span', '', s.title + ' · ' + s.text)); sc.append(l); });
+  const sc = el('fieldset'); sc.append(el('legend', '', 'Situation (fixed list, you type nothing the agent reads)'));
+  status.scenarios.forEach((s, i) => { const l = el('label', 'opt'); const r = el('input'); r.type = 'radio'; r.name = 'sc'; r.value = s.key; r.checked = i === 0; const sp = el('span'); sp.append(el('b', '', s.title), el('br'), s.text); l.append(r, sp); sc.append(l); });
   const md = el('fieldset'); md.append(el('legend', '', 'What should happen'));
-  [['agent', 'Let the Vultr agent handle it', 'A real agent reads the Case, creates the follow-up Task and closes it. You then check the result.'],
-   ['verifier_test', 'Test the verifier with a controlled fault', 'No agent acts. The server closes the Case without a closure reason on purpose, so you can see the verifier catch it. This is not a failure of any agent.']]
+  [['agent', 'Let the Vultr agent handle it', 'A real agent records the closure and creates the follow-up Task.'],
+   ['verifier_test', 'Test the verifier with a controlled fault', 'No agent acts. The server closes the Case without a closure reason on purpose, so you see the verifier catch it. Not a failure of any agent.']]
     .forEach(([v, t, d], i) => { const l = el('label', 'opt'); const r = el('input'); r.type = 'radio'; r.name = 'md'; r.value = v; r.checked = i === 0; const s = el('span'); s.append(el('b', '', t), el('br'), d); l.append(r, s); md.append(l); });
   f.append(sc, md);
   const go = el('button', 'primary', 'Open the ticket'); go.type = 'submit'; go.disabled = busy; f.append(go);
   f.onsubmit = e => { e.preventDefault(); act(() => api('/sessions', { code: code.value, scenario: f.sc.value, mode: f.md.value })); };
-  return f;
+  w.append(f);
+  return w;
+}
+
+function progress(v) {
+  const done = [!!v.case_label, ['agent_done', 'uncertain', 'fixed'].includes(v.state), v.reports.length > 0, v.reports.length > 0];
+  const names = ['Case created', v.mode === 'agent' ? 'Agent acted' : 'Fault applied', 'Checked', 'Decision'];
+  const n = el('nav', 'chain'); n.setAttribute('aria-label', 'Progress');
+  names.forEach((t, i) => { const b = el('span', 'node' + (done[i] ? ' done' : '') + (done[i] && !done[i + 1] ? ' on' : ''), t); n.append(b); });
+  return n;
 }
 
 function session() {
   const d = el('div', 'live');
   const v = view;
-  const t = el('section', 'card'); t.append(el('h3', '', 'Customer request'), el('p', 'muted', 'Scripted entry, chosen from a fixed list · ' + (v.case_label ? 'Case ' + v.case_label : 'no Case created')));
+  d.append(progress(v)); d.append(agreement());
+  const t = el('section', 'card'); t.append(el('h3', '', 'You are the customer'), el('p', 'muted', 'Fixed entry, chosen from a list · ' + (v.case_label ? 'Case ' + v.case_label : 'no Case created')));
   t.append(el('p', 'quote', '“' + v.scenario.text + '”')); d.append(t);
   if (v.state === 'failed') { d.append(el('p', 'banner bad', v.error || 'This session failed.')); d.append(button('Start over', 'quiet', () => { store.set(null); view = null; draw(); })); return d; }
 
@@ -87,7 +105,7 @@ function session() {
   d.append(h);
 
   const can = ['agent_done', 'uncertain', 'fixed'].includes(v.state);
-  const c = el('section', 'card'); c.append(el('h3', '', 'Check'));
+  const c = el('section', 'card'); c.append(el('h3', '', 'Now check as operations'));
   if (!v.reports.length) { c.append(el('p', 'muted', can ? 'Action Guard reads the Case in Salesforce and compares it with the approved conditions. Nothing is written.' : 'Available once the ticket has been handled.')); if (can) c.append(button('Check this ticket', 'primary', () => act(() => api('/sessions/' + v.session_id + '/check', {})))); }
   else {
     c.append(reportBlock(v.reports[0], v.reports.length > 1 ? 'First audit' : 'Audit'));
@@ -109,7 +127,7 @@ function session() {
 
 function draw() {
   const root = $('#live'); root.replaceChildren();
-  const h = el('div', 'st-hero'); h.append(el('h1', '', 'Try it on a live Case')); root.append(h);
+  const h = el('div', 'st-hero'); h.append(el('h1', '', 'Try it on a live Case'), el('p', 'st-lead', 'Record a handled ticket, then check the Salesforce record.')); root.append(h);
   if (!status) { root.append(el('p', 'muted', 'Checking whether the live demo is available…')); return; }
   if (!status.enabled) {
     root.append(el('p', 'st-lead', 'The live demo is switched off right now. The recorded walkthrough shows the same flow with real recorded data.'));
@@ -117,7 +135,8 @@ function draw() {
   }
   if (error) { const e = el('p', 'banner bad', error); e.setAttribute('role', 'alert'); root.append(e); }
   root.append(view ? session() : startForm());
-  root.append(el('p', 'muted st-foot', 'Live run in a Salesforce developer org · synthetic Cases only · Salesforce Ids are masked · limits apply · this checks the outcome of closing a Case with a follow-up Task, not whether the customer’s problem was resolved.'));
+  const det = el('details', 'st-foot'); det.append(el('summary', '', 'Limits and what this shows'));
+  det.append(el('p', 'muted', 'Live run in a Salesforce developer org, synthetic Cases only, Salesforce Ids masked, usage limits apply. It checks the outcome of closing a Case with a follow-up Task, not whether the customer’s problem was resolved. The customer message is a fixed entry, not a conversation. Names are declared, not authenticated.')); root.append(det);
 }
 
 let loaded = false;

@@ -59,3 +59,4 @@ a.cell{transition:transform .12s}a.cell:hover{transform:translateY(-3px)}
 .live-form fieldset{border:0;padding:0;margin:20px 0}.live-form legend{font:600 15px var(--serif);margin-bottom:8px}.opt{display:flex;gap:12px;align-items:flex-start;background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;font-weight:400;cursor:pointer}.opt input{width:auto;margin-top:5px}.opt b{font-weight:650}
 .live{display:grid;gap:16px;max-width:900px}.live .card{margin:0}.banner{padding:12px 16px;border-radius:8px;margin:12px 0}.banner.ok{background:var(--ok-bg);color:var(--ok)}.banner.bad{background:var(--bad-bg);color:var(--bad)}.rep{margin:10px 0 0}
 .live > button.quiet{justify-self:start}
+.banner.wait{background:var(--wait-bg);color:var(--wait)}.live .chain .node{cursor:default}

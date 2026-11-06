@@ -36,10 +36,10 @@ from vultr_agent.agent import run_agent
 from vultr_agent.tools import Guard, SalesforceTools
 
 SCENARIOS = {
-    "wrong_item": ("Wrong item received", "The customer received a different product than the one ordered and asks for help.", "Resolved - Guidance provided"),
-    "late_shipment": ("Late shipment", "The customer's order has not arrived by the promised date and asks for an update.", "Resolved - Customer confirmed"),
-    "duplicate_charge": ("Duplicate charge", "The customer was charged twice for the same order and asks for it to be reviewed.", "Duplicate"),
-    "cancel_order": ("Cancel an order", "The customer placed an order by mistake and asks to cancel it.", "Cancelled"),
+    "wrong_item": ("Wrong item: exchange arranged by phone", "The team already arranged the exchange with the customer by phone. Record the closure and schedule a follow-up.", "Resolved - Guidance provided"),
+    "late_shipment": ("Late shipment: customer was informed", "The team already told the customer the new delivery date. Record the closure and schedule a follow-up.", "Resolved - Customer confirmed"),
+    "duplicate_charge": ("Duplicate charge: refund handled elsewhere", "The duplicate charge was already handled in the billing system. Record the closure and schedule a follow-up.", "Duplicate"),
+    "cancel_order": ("Order cancelled by the team", "The team already cancelled the order at the customer's request. Record the closure and schedule a follow-up.", "Cancelled"),
 }
 MODES = ("agent", "verifier_test")
 SESSION_TTL = 6 * 3600
@@ -292,7 +292,7 @@ class LiveDemo:
         for rep in s["reports"]:
             r = mask_report(rep); row = r["cases"][0]
             sev = finding_severity(row["failed_checks"], rep["policy"]) if row["failed_checks"] else None
-            out["reports"].append({"report": r, "decision": {"accepted": row["status"] == "correct", "severity": sev}})
+            out["reports"].append({"report": r, "decision": {"accepted": row["status"] == "correct", "status": row["status"], "severity": sev}})
         if s["finding"]:
             f = s["finding"]
             out["finding"] = {"finding_id": f["finding_id"], "state": f["state"], "severity": f["severity"],
