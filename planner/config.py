@@ -27,10 +27,10 @@ class PlannerConfig:
         env = os.environ if env is None else env
         missing = [k for k in ("VULTR_INFERENCE_API_KEY", "VULTR_INFERENCE_MODEL") if not env.get(k)]
         if missing:
-            raise PlannerError("config", message="Variaveis ausentes: " + ", ".join(missing))
+            raise PlannerError("config", message="Missing variables: " + ", ".join(missing))
         base = (env.get("VULTR_INFERENCE_BASE_URL") or DEFAULT_BASE_URL).rstrip("/")
         if not base.startswith("https://"):
-            raise PlannerError("config", message="VULTR_INFERENCE_BASE_URL deve comecar com https://")
+            raise PlannerError("config", message="VULTR_INFERENCE_BASE_URL must start with https://")
         extra: dict[str, float | int] = {}
         # Modelos com raciocinio gastam tokens antes da resposta; o limite precisa ser ajustavel sem mudar codigo.
         for var, key, kind, lo, hi in (("VULTR_INFERENCE_MAX_TOKENS", "max_tokens", int, 256, 32000),
@@ -40,8 +40,8 @@ class PlannerConfig:
                 try:
                     val = kind(raw)
                 except ValueError:
-                    raise PlannerError("config", message=f"{var} deve ser numerico") from None
+                    raise PlannerError("config", message=f"{var} must be numeric") from None
                 if not lo <= val <= hi:
-                    raise PlannerError("config", message=f"{var} fora do intervalo {lo}..{hi}")
+                    raise PlannerError("config", message=f"{var} outside the range {lo}..{hi}")
                 extra[key] = val
         return cls(api_key=env["VULTR_INFERENCE_API_KEY"], model=env["VULTR_INFERENCE_MODEL"], base_url=base, **extra)

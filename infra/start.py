@@ -4,9 +4,9 @@ import os
 
 def validate(environ):
     if len(environ.get('ACTION_GUARD_API_TOKEN', '')) < 32:
-        raise ValueError('ACTION_GUARD_API_TOKEN precisa de pelo menos 32 caracteres aleatorios.')
+        raise ValueError('ACTION_GUARD_API_TOKEN needs at least 32 random characters.')
     if environ.get('ACTION_GUARD_DEMO_MODE', '').lower() not in {'true', 'false'}:
-        raise ValueError('Defina ACTION_GUARD_DEMO_MODE como true ou false.')
+        raise ValueError('Set ACTION_GUARD_DEMO_MODE to true or false.')
 
 
 if __name__ == '__main__':

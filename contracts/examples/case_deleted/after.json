@@ -28,7 +28,7 @@
     {
       "object": "Case",
       "id": "500SYN000000001AAA",
-      "basis": "queryAll com IsDeleted = true retornou o registro"
+      "basis": "queryAll with IsDeleted = true returned the record"
     }
   ]
 }

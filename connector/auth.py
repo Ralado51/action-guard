@@ -26,7 +26,7 @@ def get_token(cfg: SalesforceConfig, transport: Transport) -> Token:
                                  headers={"Content-Type": "application/x-www-form-urlencoded"},
                                  body=form, timeout=cfg.rest_timeout_seconds)
     except TransportError as e:
-        raise AuthError(f"falha ao obter token: {e}") from e
+        raise AuthError(f"failed to obtain a token: {e}") from e
     if not resp.ok or not isinstance(resp.body, dict) or not resp.body.get("access_token"):
         code = resp.body.get("error") if isinstance(resp.body, dict) else None
         raise AuthError(f"OAuth recusado (HTTP {resp.status}, error={code})")

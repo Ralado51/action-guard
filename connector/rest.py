@@ -36,15 +36,15 @@ class SalesforceRest:
                 raise QueryError(f"consulta recusada (HTTP {resp.status}): {_first_error(resp.body)}")
             page = resp.body.get("records")
             if not isinstance(page, list):
-                raise QueryError("resposta sem lista 'records'")
+                raise QueryError("response without a 'records' list")
             records.extend(page)
             if type(resp.body.get("done")) is not bool:
-                raise QueryError("paginacao incompleta: done ausente ou invalido")
+                raise QueryError("incomplete pagination: done missing or invalid")
             if resp.body["done"]:
                 return records
             nxt = resp.body.get("nextRecordsUrl")
             if not nxt:
-                raise QueryError("paginacao incompleta: done=false sem nextRecordsUrl")
+                raise QueryError("incomplete pagination: done=false without nextRecordsUrl")
             url = f"{self.cfg.my_domain}{nxt}"
         raise QueryError(f"paginacao excedeu {max_pages} paginas")
 
@@ -63,5 +63,5 @@ class SalesforceRest:
 def _first_error(body: Any) -> str:
     if isinstance(body, list) and body and isinstance(body[0], dict):
         return f"{body[0].get('errorCode')}: {body[0].get('message')}"
-    return "sem detalhe"
+    return "no detail"
 

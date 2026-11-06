@@ -33,10 +33,10 @@ class SalesforceConfig:
         missing = [k for k in ("SF_LOGIN_URL", "SF_API_VERSION", "SF_AGENT_ID", "SF_CLIENT_ID", "SF_CLIENT_SECRET")
                    if not env.get(k)]
         if missing:
-            raise ConfigError("variaveis de ambiente ausentes: " + ", ".join(missing))
+            raise ConfigError("missing environment variables: " + ", ".join(missing))
         domain = env["SF_LOGIN_URL"].rstrip("/")
         if not domain.startswith("https://"):
-            raise ConfigError("SF_LOGIN_URL deve comecar com https://")
+            raise ConfigError("SF_LOGIN_URL must start with https://")
         version = env["SF_API_VERSION"].lstrip("v")
         return cls(my_domain=domain, api_version=version, agent_id=env["SF_AGENT_ID"],
                    client_id=env["SF_CLIENT_ID"], client_secret=env["SF_CLIENT_SECRET"])

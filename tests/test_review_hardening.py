@@ -124,7 +124,7 @@ def test_internal_bug_is_500_generic_not_503_config(setup, monkeypatch):
     monkeypatch.setattr(svc, "get", lambda key: {}["campo"])
     with TestClient(app, headers=HEADERS, raise_server_exceptions=False) as c:
         r = c.get("/api/plans/x")
-    assert r.status_code == 500 and r.json() == {"detail": "Erro interno do servidor."}
+    assert r.status_code == 500 and r.json() == {"detail": "Internal server error."}
 
 
 def test_missing_metadata_file_is_still_503(setup, monkeypatch):
@@ -143,23 +143,23 @@ def _run_sim(behavior, tmp_path):
 def test_extra_linked_task_with_other_subject_is_warned_not_hidden(tmp_path):
     _, rep = _run_sim(sim.extra_other_task, tmp_path)
     assert rep["status"] == "passed"
-    assert any(l.startswith("AVISO chk_followup_task") for l in rep["limitations"])
+    assert any(l.startswith("WARNING chk_followup_task") for l in rep["limitations"])
     detail = next(r for r in rep["results"] if r["check_id"] == "chk_followup_task")["evidence"]["after"]
     assert len(detail["linked_unmatched_ids"]) == 1 and len(detail["matching_ids"]) == 1
 
 
 def test_clean_run_has_no_task_warning_but_declares_scope(tmp_path):
     _, rep = _run_sim(sim.close_ok, tmp_path)
-    assert not any(l.startswith("AVISO") for l in rep["limitations"])
+    assert not any(l.startswith("WARNING") for l in rep["limitations"])
     blob = " ".join(rep["limitations"])
-    assert "nao observa outros objetos" in blob and "para assim que todas as verificacoes passam" in blob
+    assert "does not observe other objects" in blob and "stops as soon as all checks pass" in blob
 
 
 def test_rejected_after_send_does_not_claim_nothing_ran(tmp_path):
     from tests.test_salesforce_integration import run
     _, rep = run(sim.nothing, tmp_path, lambda f: setattr(f, "message_error", "400"))
     text = " ".join(rep["limitations"])
-    assert "Isso nao prova que nada foi executado" in text and "nao chegou a executar" not in text
+    assert "This does not prove that nothing was executed" in text and "did not execute" not in text
 
 
 # ---- estado nao-enviado ----

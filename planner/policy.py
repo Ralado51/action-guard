@@ -48,9 +48,9 @@ def canonical_specs(action: ActionContext) -> dict[str, dict[str, Any]]:
 
 def preconditions() -> list[dict[str, Any]]:
     return [
-        {"id": "pre_open", "description": "O Case sintetico esta aberto antes da acao.",
+        {"id": "pre_open", "description": "The synthetic Case is open before the action.",
          "object": "Case", "field": "IsClosed", "expected": False},
-        {"id": "pre_reason_empty", "description": "O motivo de encerramento esta vazio antes da acao.",
+        {"id": "pre_reason_empty", "description": "The closure reason is empty before the action.",
          "object": "Case", "field": "Closure_Reason__c", "expected": None},
     ]
 
@@ -80,14 +80,14 @@ def assemble(proposal: dict[str, Any], rule: dict[str, Any], action: ActionConte
     warnings: list[str] = []
     dropped = sorted(k for k in proposal if k not in ALLOWED_PROPOSAL_KEYS)
     if dropped:
-        warnings.append("campos do modelo ignorados: " + ", ".join(k[:30] for k in dropped))
+        warnings.append("model fields ignored: " + ", ".join(k[:30] for k in dropped))
 
     specs = canonical_specs(action)
     raw_checks = proposal.get("checks")
     if not isinstance(raw_checks, list) or not all(isinstance(c, dict) for c in raw_checks):
-        return {}, ["checks deve ser uma lista de objetos"], warnings
+        return {}, ["checks must be a list of objects"], warnings
     if len(raw_checks) > MAX_CHECKS:
-        problems.append(f"checks excede o limite de {MAX_CHECKS}")
+        problems.append(f"checks exceeds the limit of {MAX_CHECKS}")
         raw_checks = raw_checks[:MAX_CHECKS]
 
     by_id: dict[str, dict[str, Any]] = {}
@@ -95,10 +95,10 @@ def assemble(proposal: dict[str, Any], rule: dict[str, Any], action: ActionConte
     for c in raw_checks:
         unknown = set(c) - CHECK_KEYS
         if unknown:
-            problems.append("check com chaves desconhecidas: " + ", ".join(sorted(k[:30] for k in unknown)))
+            problems.append("check with unknown keys: " + ", ".join(sorted(k[:30] for k in unknown)))
             continue
         clean = {k: v for k, v in c.items() if k not in ("check_id", "description")}
-        clean["description"] = _clean(c.get("description")) or "Verificacao proposta pelo planner."
+        clean["description"] = _clean(c.get("description")) or "Check proposed by the planner."
         cid = next((i for i, s in specs.items() if _match_spec(c, s)), None)
         if cid:
             if cid in by_id:
@@ -109,13 +109,13 @@ def assemble(proposal: dict[str, Any], rule: dict[str, Any], action: ActionConte
         touches_protected = (c.get("object") == "Case" and c.get("field") in PROTECTED_CASE_FIELDS) \
             or c.get("kind") in ("no_unexpected_change", "record_created")
         if touches_protected:
-            problems.append(f"check enfraquece ou contradiz um invariante do MVP: {str(c.get('kind'))[:30]} "
+            problems.append(f"check weakens or contradicts an MVP invariant: {str(c.get('kind'))[:30]} "
                             f"{str(c.get('object'))[:30]}.{str(c.get('field') or c.get('link_field'))[:40]}")
             continue
         extras.append(clean)
     for cid in specs:
         if cid not in by_id:
-            problems.append(f"invariante ausente: {cid}")
+            problems.append(f"missing invariant: {cid}")
     checks = [by_id[i] for i in specs if i in by_id]
     for n, e in enumerate(extras, 1):
         checks.append({"check_id": f"chk_extra_{n:02d}", **e})
@@ -123,13 +123,13 @@ def assemble(proposal: dict[str, Any], rule: dict[str, Any], action: ActionConte
     mon_raw = proposal.get("monitored")
     objects: list[dict[str, Any]] = []
     if not isinstance(mon_raw, dict) or not isinstance(mon_raw.get("objects"), list):
-        problems.append("monitored.objects ausente")
+        problems.append("monitored.objects missing")
     else:
         seen: dict[str, list[str]] = {}
         for m in mon_raw["objects"]:
             if not isinstance(m, dict) or not isinstance(m.get("object"), str) or not isinstance(m.get("fields"), list) \
                     or not all(isinstance(f, str) for f in m["fields"]):
-                problems.append("monitored.objects com item malformado")
+                problems.append("monitored.objects with a malformed item")
                 continue
             if m["object"] not in ALLOWED_OBJECTS:
                 problems.append(f"objeto fora do escopo do MVP: {m['object'][:40]!r}")
@@ -138,18 +138,18 @@ def assemble(proposal: dict[str, Any], rule: dict[str, Any], action: ActionConte
                 problems.append(f"objeto monitorado duplicado: {m['object']}")
                 continue
             if len(m["fields"]) > MAX_FIELDS_PER_OBJECT:
-                problems.append(f"{m['object']}: mais de {MAX_FIELDS_PER_OBJECT} campos")
+                problems.append(f"{m['object']}: more than {MAX_FIELDS_PER_OBJECT} fields")
             seen[m["object"]] = list(dict.fromkeys(m["fields"]))[:MAX_FIELDS_PER_OBJECT]
         for obj, req in REQUIRED_MONITORED.items():
             have = seen.get(obj, [])
             missing = [f for f in req if f not in have]
             if missing:
-                problems.append(f"monitored.{obj} sem campos obrigatorios: {', '.join(missing)}")
+                problems.append(f"monitored.{obj} without mandatory fields: {', '.join(missing)}")
             ordered = [f for f in req if f in have] + [f for f in have if f not in req]
             objects.append({"object": obj, "fields": ordered})
     window = proposal.get("async_window")
     if not isinstance(window, dict):
-        problems.append("async_window ausente")
+        problems.append("async_window missing")
         window = {}
 
     plan = {
@@ -174,24 +174,24 @@ def validate(plan: dict[str, Any], meta: MetadataContext, action: ActionContext,
     sem = list(validate_plan_semantics(plan))
     w = plan["async_window"]
     if w["max_wait_seconds"] > MAX_WAIT_SECONDS:
-        sem.append(f"async_window.max_wait_seconds acima de {MAX_WAIT_SECONDS}")
+        sem.append(f"async_window.max_wait_seconds above {MAX_WAIT_SECONDS}")
     elif w["max_wait_seconds"] // w["poll_interval_seconds"] + 1 > MAX_POLL_ATTEMPTS:
-        sem.append(f"async_window gera mais de {MAX_POLL_ATTEMPTS} consultas")
+        sem.append(f"async_window generates more than {MAX_POLL_ATTEMPTS} queries")
     for m in plan["monitored"]["objects"]:
         if m["object"] not in meta.objects:
-            sem.append(f"objeto {m['object']} fora do contexto de metadados")
+            sem.append(f"object {m['object']} outside the metadata context")
             continue
         for f in m["fields"]:
             info = meta.field(m["object"], f)
             if info is None:
-                sem.append(f"campo {m['object']}.{f} inexistente no contexto de metadados")
+                sem.append(f"field {m['object']}.{f} does not exist in the metadata context")
             elif not info.readable:
-                sem.append(f"campo {m['object']}.{f} nao legivel")
+                sem.append(f"field {m['object']}.{f} not readable")
     for c in plan["checks"]:
         if c["kind"] in ("field_equals", "field_not_empty", "field_unchanged") and c["object"] != "Case":
-            sem.append(f"{c['check_id']}: verificacoes de campo devem mirar o Case")
+            sem.append(f"{c['check_id']}: field checks must target the Case")
         if c["kind"] == "field_equals":
             info = meta.field(c["object"], c["field"])
             if info and info.type == "picklist" and c["expected"] not in info.values:
-                sem.append(f"{c['check_id']}: valor {str(c['expected'])[:40]!r} fora da picklist {c['field']}")
+                sem.append(f"{c['check_id']}: value {str(c['expected'])[:40]!r} outside the picklist {c['field']}")
     return [], sem

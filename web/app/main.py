@@ -23,8 +23,8 @@ app = FastAPI(title='Action Guard', version='0.2.0')
 async def unexpected(request, exc):
     # Sem detalhe ao cliente; o traceback fica no log do servidor.
     import logging
-    logging.getLogger('action_guard').exception('erro inesperado em %s', request.url.path)
-    return JSONResponse(status_code=500, content={'detail': 'Erro interno do servidor.'})
+    logging.getLogger('action_guard').exception('unexpected error in %s', request.url.path)
+    return JSONResponse(status_code=500, content={'detail': 'Internal server error.'})
 STATIC = Path(__file__).resolve().parents[1] / 'static'
 app.mount('/static', StaticFiles(directory=STATIC), name='static')
 
@@ -39,7 +39,7 @@ def authorize(authorization: str = Header(default='')):
     if not token:
         raise HTTPException(503, 'Configure ACTION_GUARD_API_TOKEN no servidor.')
     if not hmac.compare_digest(authorization.encode('utf-8', 'replace'), ('Bearer ' + token).encode('utf-8')):
-        raise HTTPException(401, 'Token de acesso invalido.')
+        raise HTTPException(401, 'Invalid access token.')
 
 
 def invoke(fn, *args):
@@ -142,7 +142,7 @@ def approve(plan_id: str, body: ApprovePlanRequest, svc=Depends(workflow)):
 
 def require_execution():
     if demo_mode():
-        raise HTTPException(403, 'Modo demonstracao: execucao real desabilitada. Geracao, revisao e auditoria continuam disponiveis.')
+        raise HTTPException(403, 'Demo mode: real execution is disabled. Generation, review and audit remain available.')
 
 
 @app.get('/api/capabilities')
@@ -163,7 +163,7 @@ def audit(body: AuditRequest, svc=Depends(workflow)):
         raise HTTPException(422, 'Informe exatamente um entre case_ids e since.')
     ids = body.case_ids
     if ids is not None and any(not re.fullmatch(r'[A-Za-z0-9]{15}([A-Za-z0-9]{3})?', i) for i in ids):
-        raise HTTPException(422, 'Todos os Ids devem ter 15 ou 18 caracteres alfanumericos.')
+        raise HTTPException(422, 'All Ids must have 15 or 18 alphanumeric characters.')
     return invoke(svc.audit, body.approved_plan_id, ids, body.since, body.modified_by, body.limit, body.explain)
 
 
@@ -176,5 +176,5 @@ def get_run(run_id: str, svc=Depends(workflow)):
 def get_report(run_id: str, svc=Depends(workflow)):
     result = invoke(svc.run, run_id)
     if result['state'] != 'completed':
-        raise HTTPException(409, 'Relatorio ainda indisponivel; confira o estado da execucao.')
+        raise HTTPException(409, 'Report not available yet; check the run status.')
     return result['report']

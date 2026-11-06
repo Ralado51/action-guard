@@ -25,15 +25,15 @@ from .run import AuditBlocked, run_audit
 def main(argv=None, *, transport=None, secret=None) -> int:
     ap = argparse.ArgumentParser(prog="python -m audit")
     sub = ap.add_subparsers(dest="command", required=True)
-    r = sub.add_parser("run", help="Audita registros (somente leitura).")
-    r.add_argument("--plan", required=True, help="plano aprovado (JSON do plano ou bundle com chave 'plan')")
+    r = sub.add_parser("run", help="Audits records (read-only).")
+    r.add_argument("--plan", required=True, help="approved plan (plan JSON or a bundle with a 'plan' key)")
     g = r.add_mutually_exclusive_group(required=True)
-    g.add_argument("--case-ids", help="arquivo com um Id por linha (os Cases que o agente informou)")
-    g.add_argument("--since", help="janela: Cases encerrados desde 2026-11-01T00:00:00Z")
-    r.add_argument("--modified-by", help="Id do usuario do agente (filtro opcional da janela)")
+    g.add_argument("--case-ids", help="file with one Id per line (the Cases the agent reported)")
+    g.add_argument("--since", help="window: Cases closed since 2026-11-01T00:00:00Z")
+    r.add_argument("--modified-by", help="agent user Id (optional window filter)")
     r.add_argument("--limit", type=int, default=200)
     r.add_argument("--runs-dir", default="runs")
-    r.add_argument("--explain", action="store_true", help="resumo com o modelo da Vultr (so contagens)")
+    r.add_argument("--explain", action="store_true", help="summary with the Vultr model (counts only)")
     args = ap.parse_args(argv)
     try:
         with open(args.plan, encoding="utf-8") as fh:
@@ -64,7 +64,7 @@ def main(argv=None, *, transport=None, secret=None) -> int:
         print(json.dumps(e.to_public(), ensure_ascii=False))
         return 1
     except (ValueError, KeyError, TypeError, OSError, AuthError, ConfigError):
-        print("Operacao interrompida. Confira configuracao, plano e selecao; nada foi alterado no Salesforce.")
+        print("Operation interrupted. Check the configuration, plan and selection; nothing was changed in Salesforce.")
         return 1
 
 

@@ -31,7 +31,7 @@ def args(path, tmp_path):
 
 
 def approve(prompt):
-    return prompt.split("Digite ", 1)[1].removesuffix(": ")
+    return prompt.split("Type ", 1)[1].removesuffix(": ")
 
 
 def test_cli_decline_performs_no_http(tmp_path, env):

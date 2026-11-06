@@ -18,7 +18,7 @@ class InvalidSalesforceId(ValueError):
 
 def _check(value: object) -> str:
     if not isinstance(value, str) or not _ID.match(value):
-        raise InvalidSalesforceId("Id Salesforce deve ter 15 ou 18 caracteres alfanumericos")
+        raise InvalidSalesforceId("A Salesforce Id must have 15 or 18 alphanumeric characters")
     return value
 
 

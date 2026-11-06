@@ -48,13 +48,13 @@ class VultrChatClient:
                    "Accept": "application/json"}
         while True:
             if not budget.take():
-                raise PlannerError("upstream", message="Orcamento de chamadas esgotado antes de uma resposta utilizavel.")
+                raise PlannerError("upstream", message="Call budget exhausted before a usable response.")
             try:
                 resp = self.transport.request("POST", f"{self.cfg.base_url}/chat/completions", headers=headers,
                                               body=payload, timeout=self.cfg.timeout_seconds)
             except TransportError as e:
                 raise PlannerError("timeout" if e.timed_out else "upstream",
-                                   message=None if e.timed_out else "Falha de rede ao chamar a inferencia.") from None
+                                   message=None if e.timed_out else "Network failure while calling inference.") from None
             if resp.status in (401, 403):
                 raise PlannerError("auth")
             if resp.status == 429 or resp.status >= 500:
@@ -73,24 +73,24 @@ def parse_chat_response(body: Any) -> ChatResult:
         return PlannerError("invalid_response", message=msg)
 
     if not isinstance(body, dict):
-        raise bad("Corpo da resposta nao e um objeto JSON.")
+        raise bad("Response body is not a JSON object.")
     choices = body.get("choices")
     if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
-        raise bad("Resposta sem choices.")
+        raise bad("Response without choices.")
     choice = choices[0]
     msg = choice.get("message")
     if not isinstance(msg, dict):
-        raise bad("Resposta sem message.")
+        raise bad("Response without message.")
     if msg.get("tool_calls"):
-        raise bad("Resposta pediu tool_calls; o planner nao executa ferramentas.")
+        raise bad("Response asked for tool_calls; the planner does not run tools.")
     finish = choice.get("finish_reason")
     if finish == "length":
-        raise bad("Resposta truncada (finish_reason=length).")
+        raise bad("Response truncated (finish_reason=length).")
     if finish != "stop":
         raise bad(f"finish_reason inesperado: {str(finish)[:30]!r}.")
     content = msg.get("content")
     if not isinstance(content, str) or not content.strip():
-        raise bad("Conteudo vazio (reasoning nao e usado como plano).")
+        raise bad("Empty content (reasoning is not used as a plan).")
     usage = body.get("usage") if isinstance(body.get("usage"), dict) else {}
     clean = {k: v for k, v in usage.items() if k in ("prompt_tokens", "completion_tokens", "total_tokens")
              and isinstance(v, int) and not isinstance(v, bool)}

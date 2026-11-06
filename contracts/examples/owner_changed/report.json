@@ -3,7 +3,7 @@
   "run_id": "run-synthetic-owner_changed-001",
   "plan_id": "plan-close-case-001",
   "plan_version": 1,
-  "plan_hash": "sha256:52e68cf19831ecfdc309c60b8ef44a2e8569ab93fc2e5f48b8882da85ce5d1c1",
+  "plan_hash": "sha256:9056c90916d0a77d81f5caaa958c7070ce7bff5b3b523ca9c196308d6ff6214e",
   "executed_via": "agentforce_agent_api",
   "action": {
     "identifier": "Action Guard",
@@ -18,7 +18,7 @@
       "check_id": "chk_status_closed",
       "kind": "field_equals",
       "status": "passed",
-      "reason": "Status mudou para Closed.",
+      "reason": "Status changed to Closed.",
       "evidence": {
         "record_ids": [
           "500SYN000000001AAA"
@@ -36,7 +36,7 @@
       "check_id": "chk_reason_filled",
       "kind": "field_not_empty",
       "status": "passed",
-      "reason": "O motivo de encerramento foi preenchido.",
+      "reason": "The closure reason was filled.",
       "evidence": {
         "record_ids": [
           "500SYN000000001AAA"
@@ -53,7 +53,7 @@
       "check_id": "chk_reason_matches",
       "kind": "field_equals",
       "status": "passed",
-      "reason": "O motivo de encerramento e igual ao informado no plano.",
+      "reason": "The closure reason equals the one given in the plan.",
       "evidence": {
         "record_ids": [
           "500SYN000000001AAA"
@@ -70,7 +70,7 @@
       "check_id": "chk_owner_unchanged",
       "kind": "field_unchanged",
       "status": "failed",
-      "reason": "OwnerId mudou durante o encerramento.",
+      "reason": "OwnerId changed during the closure.",
       "evidence": {
         "record_ids": [
           "500SYN000000001AAA"
@@ -88,7 +88,7 @@
       "check_id": "chk_followup_task",
       "kind": "record_created",
       "status": "passed",
-      "reason": "Exatamente uma nova Task com o Subject esperado foi criada e vinculada ao Case por WhatId.",
+      "reason": "Exactly one new Task with the expected Subject was created and linked to the Case by WhatId.",
       "evidence": {
         "record_ids": [
           "00TSYN000000001AAA"
@@ -105,7 +105,7 @@
       "check_id": "chk_no_unexpected",
       "kind": "no_unexpected_change",
       "status": "failed",
-      "reason": "OwnerId mudou e nao esta em allowed_changes.",
+      "reason": "OwnerId changed and is not in allowed_changes.",
       "evidence": {
         "record_ids": [
           "500SYN000000001AAA"
@@ -128,8 +128,8 @@
     }
   ],
   "limitations": [
-    "no_unexpected_change cobre somente os registros e campos monitorados pelo plano.",
-    "A acao foi disparada pelo Agent API do Agentforce; a resposta do agente e narrativa e nao substitui a evidencia dos registros."
+    "no_unexpected_change covers only the records and fields monitored by the plan.",
+    "The action was triggered through the Agentforce Agent API; the agent's response is narrative and does not replace the evidence in the records."
   ],
   "containment_events": [],
   "generated_at": "2026-11-03T18:00:45Z"

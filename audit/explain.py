@@ -17,20 +17,20 @@ _NUM = re.compile(r"\d+(?:[.,]\d+)?")
 _ID = re.compile(r"\b[A-Za-z0-9]{15,18}\b")
 
 SYSTEM = (
-    "Voce resume resultados de uma auditoria de acoes de agente. Responda em portugues do Brasil, em ate 4 frases, "
-    "somente com texto simples. Use APENAS os numeros fornecidos em 'dados'; nao calcule nem invente numeros, "
-    "nao cite identificadores de registros e nao faca recomendacoes sobre o agente. Diga o que foi verificado, "
-    "o resultado, e o que NAO foi verificado (campos 'nao_auditavel' e 'cobertura')."
+    "You summarize the results of an audit of agent actions. Answer in English, in at most 4 sentences, "
+    "in plain text only. Use ONLY the numbers given in 'data'; do not calculate or invent numbers, "
+    "do not cite record identifiers and do not make recommendations about the agent. Say what was verified, "
+    "the result, and what was NOT verified (fields 'not_auditable', 'coverage' and 'uncovered_clauses')."
 )
 
 
 def build_input(report: dict[str, Any]) -> dict[str, Any]:
-    return {"totais": report["totals"], "taxa_resultado_correto": report["outcome_rate"],
-            "por_verificacao": [{"descricao": c["description"], "aprovadas": c["passed"], "falhas": c["failed"],
-                                 "inconclusivas": c["inconclusive"]} for c in report["by_check"]],
-            "nao_auditavel": [n["check_id"] for n in report["not_auditable"]],
-            "cobertura": report.get("coverage_status"),
-            "clausulas_nao_cobertas": [i["text"] for i in report.get("rule_coverage", []) if i["status"] != "covered"][:12]}
+    return {"totals": report["totals"], "correct_outcome_rate": report["outcome_rate"],
+            "per_check": [{"description": c["description"], "passed": c["passed"], "failures": c["failed"],
+                           "inconclusive": c["inconclusive"]} for c in report["by_check"]],
+            "not_auditable": [n["check_id"] for n in report["not_auditable"]],
+            "coverage": report.get("coverage_status"),
+            "uncovered_clauses": [i["text"] for i in report.get("rule_coverage", []) if i["status"] != "covered"][:12]}
 
 
 def allowed_numbers(report: dict[str, Any]) -> set[str]:
@@ -57,7 +57,7 @@ def validate(text: Any, report: dict[str, Any]) -> str | None:
 def explain(report: dict[str, Any], client: VultrChatClient) -> dict[str, Any]:
     """Devolve report com summary do modelo se valido; senao mantem o do servidor e registra o motivo."""
     messages = [{"role": "system", "content": SYSTEM},
-                {"role": "user", "content": "dados (JSON):\n" + json.dumps(build_input(report), ensure_ascii=False)}]
+                {"role": "user", "content": "data (JSON):\n" + json.dumps(build_input(report), ensure_ascii=False)}]
     try:
         res = client.chat(messages, Budget(1))
     except PlannerError as e:

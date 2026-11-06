@@ -59,9 +59,9 @@ def _extract_json(content: str) -> dict[str, Any]:
     try:
         data = json.loads(text)
     except ValueError:
-        raise ValueError("a resposta nao e JSON valido") from None
+        raise ValueError("the response is not valid JSON") from None
     if not isinstance(data, dict):
-        raise ValueError("a resposta JSON nao e um objeto")
+        raise ValueError("the JSON response is not an object")
     return data
 
 
@@ -72,15 +72,15 @@ def create_plan(rule: dict[str, Any], metadata_context: Any, action_context: Any
     v = _validators()
     errs = [e.message[:120] for e in v["rule"].iter_errors(rule)]
     if errs:
-        raise PlannerError("insufficient_context", ["rule invalida: " + e for e in errs[:3]])
+        raise PlannerError("insufficient_context", ["invalid rule: " + e for e in errs[:3]])
     if len(rule["text_pt"]) > MAX_RULE_CHARS:
-        raise PlannerError("insufficient_context", [f"text_pt acima de {MAX_RULE_CHARS} caracteres"])
+        raise PlannerError("insufficient_context", [f"text_pt above {MAX_RULE_CHARS} characters"])
     meta = parse_metadata(metadata_context)
     action = parse_action(action_context)
     mentioned = {r for r in KNOWN_REASONS if r.lower() in rule["text_pt"].lower()}
     if mentioned - {action.closure_reason}:
         raise PlannerError("insufficient_context", [
-            "a regra menciona um motivo diferente do solicitado; corrija um dos dois: "
+            "the rule mentions a reason different from the requested one; fix one of them: "
             + "; ".join(sorted(mentioned | {action.closure_reason}))])
     check_sufficiency(meta, action)       # antes de gastar qualquer chamada
 
@@ -118,7 +118,7 @@ def create_plan(rule: dict[str, Any], metadata_context: Any, action_context: Any
             category = "schema" if schema_p else "semantics"
         if not problems:
             if meta.source == "fixture":
-                warnings.append("metadados vieram de fixture, nao da org; nao apresentar como metadados reais")
+                warnings.append("metadata came from a fixture, not from the org; do not present it as real metadata")
             return PlanResult(plan=plan, metadata_source=meta.source, metadata_collected_at=meta.collected_at,
                               model=cfg.model, served_model=served, usage=usage, calls=budget.used, warnings=warnings)
         last = PlannerError(category, problems)
@@ -133,7 +133,7 @@ def bind_case(plan: dict[str, Any], case_id: str) -> dict[str, Any]:
     try:
         case_id = to_sfid18(case_id)      # sempre a forma de 18 caracteres, a mesma que a REST devolve
     except InvalidSalesforceId:
-        raise PlannerError("insufficient_context", ["case_id invalido"]) from None
+        raise PlannerError("insufficient_context", ["invalid case_id"]) from None
     out = copy.deepcopy(plan)
     out.setdefault("action", {}).setdefault("input", {})["case_id"] = case_id
     out["plan_version"] = int(out["plan_version"]) + 1

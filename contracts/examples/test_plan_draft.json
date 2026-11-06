@@ -2,20 +2,20 @@
   "schema_version": "1.0",
   "plan_id": "plan-close-case-001",
   "plan_version": 1,
-  "plan_hash": "sha256:52e68cf19831ecfdc309c60b8ef44a2e8569ab93fc2e5f48b8882da85ce5d1c1",
+  "plan_hash": "sha256:9056c90916d0a77d81f5caaa958c7070ce7bff5b3b523ca9c196308d6ff6214e",
   "rule_id": "rule-close-case-001",
   "approval": null,
   "preconditions": [
     {
       "id": "pre_open",
-      "description": "O Case sintetico esta aberto antes da acao.",
+      "description": "The synthetic Case is open before the action.",
       "object": "Case",
       "field": "IsClosed",
       "expected": false
     },
     {
       "id": "pre_reason_empty",
-      "description": "O motivo de encerramento esta vazio antes da acao.",
+      "description": "The closure reason is empty before the action.",
       "object": "Case",
       "field": "Closure_Reason__c",
       "expected": null
@@ -62,7 +62,7 @@
     {
       "check_id": "chk_status_closed",
       "kind": "field_equals",
-      "description": "O Case foi encerrado.",
+      "description": "The Case was closed.",
       "object": "Case",
       "field": "Status",
       "expected": "Closed"
@@ -70,14 +70,14 @@
     {
       "check_id": "chk_reason_filled",
       "kind": "field_not_empty",
-      "description": "O motivo de encerramento esta preenchido.",
+      "description": "The closure reason is filled.",
       "object": "Case",
       "field": "Closure_Reason__c"
     },
     {
       "check_id": "chk_reason_matches",
       "kind": "field_equals",
-      "description": "O motivo de encerramento e o informado no plano.",
+      "description": "The closure reason is the one given in the plan.",
       "object": "Case",
       "field": "Closure_Reason__c",
       "expected": "Resolved - Customer confirmed"
@@ -85,14 +85,14 @@
     {
       "check_id": "chk_owner_unchanged",
       "kind": "field_unchanged",
-      "description": "O proprietario do Case nao mudou.",
+      "description": "The Case owner did not change.",
       "object": "Case",
       "field": "OwnerId"
     },
     {
       "check_id": "chk_followup_task",
       "kind": "record_created",
-      "description": "Exatamente uma nova Task de acompanhamento, com o Subject esperado, foi criada e vinculada ao Case.",
+      "description": "Exactly one new follow-up Task, with the expected Subject, was created and linked to the Case.",
       "object": "Task",
       "link_field": "WhatId",
       "expected_count": 1,
@@ -103,7 +103,7 @@
     {
       "check_id": "chk_no_unexpected",
       "kind": "no_unexpected_change",
-      "description": "Nenhum outro campo monitorado mudou.",
+      "description": "No other monitored field changed.",
       "object": "*",
       "allowed_changes": [
         "Case.Status",

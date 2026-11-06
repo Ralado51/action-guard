@@ -29,7 +29,7 @@
   "collection_errors": [
     {
       "object": "Task",
-      "message": "Timeout ao consultar Task apos a janela de espera."
+      "message": "Timeout while querying Task after the wait window."
     }
   ]
 }

@@ -59,7 +59,7 @@ class Workflow:
     def _get(self, db, table, key):
         row = db.execute(f'SELECT body FROM {table} WHERE id=?', (key,)).fetchone()
         if not row:
-            raise WorkflowError(404, 'Registro nao encontrado.')
+            raise WorkflowError(404, 'Record not found.')
         return json.loads(row[0])
 
     def _put(self, db, table, key, body):
@@ -72,9 +72,9 @@ class Workflow:
         try:
             raw = json.loads(Path(path).read_text())
         except (OSError, ValueError):
-            raise WorkflowError(503, 'Arquivo de metadados ausente ou ilegivel no servidor.') from None
+            raise WorkflowError(503, 'Metadata file missing or unreadable on the server.') from None
         if not isinstance(raw, dict) or raw.get('source') != 'salesforce_describe':
-            raise WorkflowError(422, 'Este fluxo exige metadados Salesforce Describe.')
+            raise WorkflowError(422, 'This flow requires Salesforce Describe metadata.')
         parse_metadata(raw)
         return raw
 
@@ -113,11 +113,11 @@ class Workflow:
         schema, sem = policy.validate(plan, parse_metadata(entry['metadata']), parse_action(entry['action']),
                                       _validators()['test_plan'])
         if schema or sem:
-            raise WorkflowError(422, 'Plano invalido: ' + '; '.join((schema + sem)[:5]))
+            raise WorkflowError(422, 'Invalid plan: ' + '; '.join((schema + sem)[:5]))
         _, issues, _ = policy.assemble(plan, {'rule_id': plan['rule_id']}, parse_action(entry['action']),
                                        plan_id=plan['plan_id'])
         if issues:
-            raise WorkflowError(422, 'O plano deve preservar os invariantes do processo.')
+            raise WorkflowError(422, 'The plan must preserve the process invariants.')
 
     def edit(self, key, expected_hash, proposed=None, case_id=None):
         with self.connect() as db:
@@ -125,7 +125,7 @@ class Workflow:
             entry = self._get(db, 'plans', key)
             old = entry['plan']
             if old['plan_hash'] != expected_hash:
-                raise WorkflowError(409, 'Plano mudou. Recarregue antes de editar.')
+                raise WorkflowError(409, 'The plan changed. Reload before editing.')
             if case_id is not None:
                 plan = bind_case(old, case_id)
             else:
@@ -133,11 +133,11 @@ class Workflow:
                 plan.update(plan_id=key, rule_id=old['rule_id'], plan_version=old['plan_version'] + 1, approval=None)
                 # Action and target are server-owned; binding has its own explicit route.
                 if plan.get('preconditions') != old.get('preconditions'):
-                    raise WorkflowError(422, 'Precondicoes obrigatorias devem ser preservadas.')
+                    raise WorkflowError(422, 'Mandatory preconditions must be preserved.')
                 if plan.get('rule_coverage') != old.get('rule_coverage'):
-                    raise WorkflowError(422, 'A cobertura da regra e atribuida pelo servidor e nao pode ser editada.')
+                    raise WorkflowError(422, 'Rule coverage is assigned by the server and cannot be edited.')
                 if plan.get('action') != old['action']:
-                    raise WorkflowError(422, 'Acao e motivo sao fixos. Gere outro plano para trocar o motivo.')
+                    raise WorkflowError(422, 'The action and the reason are fixed. Generate another plan to change the reason.')
                 plan = with_hash(plan)
             self.validate(entry, plan)
             entry['plan'] = plan
@@ -150,13 +150,13 @@ class Workflow:
             entry = self._get(db, 'plans', key)
             plan = entry['plan']
             if plan['plan_hash'] != expected_hash or compute_plan_hash(plan) != expected_hash:
-                raise WorkflowError(409, 'Hash mudou. Revise o plano atual.')
+                raise WorkflowError(409, 'The hash changed. Review the current plan.')
             if ready_for_approval(plan):
-                raise WorkflowError(409, 'Vincule um Case antes da aprovacao.')
+                raise WorkflowError(409, 'Bind a Case before approval.')
             self.validate(entry, plan)
             clauses = sorted(i['clause_id'] for i in plan.get('rule_coverage') or [])
             if sorted(set(acknowledged)) != clauses:
-                raise WorkflowError(409, 'Confirme o tratamento de cada clausula da regra (coberta, nao verificada ou em conflito) antes de aprovar.')
+                raise WorkflowError(409, 'Confirm the handling of every clause of the rule (covered, not verified or in conflict) before approving.')
             plan['approval'] = {'approved_by': actor, 'approved_at': utc_now(), 'approved_plan_hash': expected_hash}
             if clauses:
                 plan['approval']['coverage_acknowledged'] = clauses
@@ -168,7 +168,7 @@ class Workflow:
         with self.connect() as db:
             plan = self._get(db, 'plans', key)['plan']
         if not approval_is_valid(plan):
-            raise WorkflowError(409, 'Aprove a versao atual do plano antes de auditar.')
+            raise WorkflowError(409, 'Approve the current plan version before auditing.')
         cfg = SalesforceConfig.from_env()
         http = UrllibTransport()
         try:
@@ -179,7 +179,7 @@ class Workflow:
         except ValueError as e:
             raise WorkflowError(422, str(e)) from None
         except AuthError:
-            raise WorkflowError(502, 'Falha de autenticacao no Salesforce.') from None
+            raise WorkflowError(502, 'Salesforce authentication failed.') from None
         if explain:
             try:
                 audit_explain(report, VultrChatClient(PlannerConfig.from_env(), http))
@@ -190,7 +190,7 @@ class Workflow:
 
     def reserve(self, key, expected_hash):
         if demo_mode():
-            raise WorkflowError(403, "Modo demonstracao: execucao real desabilitada.")
+            raise WorkflowError(403, "Demo mode: real execution is disabled.")
         # Configuration must be present before a durable reservation is consumed.
         cfg = SalesforceConfig.from_env()
         with self.connect() as db:
@@ -198,17 +198,17 @@ class Workflow:
             entry = self._get(db, 'plans', key)
             plan = entry['plan']
             if plan['plan_hash'] != expected_hash or not approval_is_valid(plan):
-                raise WorkflowError(409, 'Execute somente o hash atual aprovado.')
+                raise WorkflowError(409, 'Run only the current approved hash.')
             self.validate(entry, plan)
             if ready_for_approval(plan):
-                raise WorkflowError(409, 'Plano ainda nao pode ser executado.')
+                raise WorkflowError(409, 'The plan cannot be run yet.')
             run_id = 'run-' + uuid.uuid4().hex
             record = {'run_id': run_id, 'state': 'queued', 'plan': plan, 'generation': entry['generation']}
             target = cfg.my_domain + '|' + key15(plan['action']['input']['case_id'])
             try:
                 db.execute('INSERT INTO runs VALUES (?,?,?)', (run_id, target, json.dumps(record)))
             except sqlite3.IntegrityError:
-                raise WorkflowError(409, 'Ja existe tentativa para este Case. Confira as evidencias; nao repita.')
+                raise WorkflowError(409, 'An attempt already exists for this Case. Check the evidence; do not repeat.')
         return run_id
 
     def work(self, run_id):
@@ -221,7 +221,7 @@ class Workflow:
             self._put(db, 'runs', run_id, record)
         try:
             if demo_mode():
-                raise RunBlocked('Modo demonstracao: execucao real desabilitada.')
+                raise RunBlocked('Demo mode: real execution is disabled.')
             record['report'] = self.execute(record['plan'], run_id)
             record['state'] = 'completed'
         except Exception as e:
@@ -230,7 +230,7 @@ class Workflow:
                 # Nenhum pedido chegou ao agente: a reserva e liberada (o historico fica) para uma nova tentativa.
                 record['state'] = 'blocked'
                 record['sent'] = False
-                record['error'] = 'Execucao bloqueada antes do envio; nenhuma acao foi enviada ao agente.'
+                record['error'] = 'Run blocked before sending; no action was sent to the agent.'
                 if isinstance(e, RunBlocked):
                     record['blocked_reason'] = str(e)[:300]
                 self._release(run_id)
@@ -238,7 +238,7 @@ class Workflow:
                 # Possivelmente enviada: nunca expor excecao bruta nem repetir a acao.
                 record['state'] = 'error'
                 record['sent'] = True
-                record['error'] = 'Execucao interrompida apos o possivel envio; reconciliar evidencias antes de nova tentativa.'
+                record['error'] = 'Run interrupted after possible sending; reconcile the evidence before a new attempt.'
         with self.connect() as db:
             self._put(db, 'runs', run_id, record)
 
@@ -255,7 +255,7 @@ class Workflow:
 
     def _execute(self, plan, run_id):
         if demo_mode():
-            raise RunBlocked("Modo demonstracao: execucao real desabilitada.")
+            raise RunBlocked("Demo mode: real execution is disabled.")
         cfg = SalesforceConfig.from_env()
         transport = UrllibTransport()
         token = get_token(cfg, transport)

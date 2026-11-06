@@ -29,7 +29,7 @@ def locate(clauses: list[dict[str, Any]], expect: list[dict[str, Any]]) -> list[
     for e in expect:
         hits = [c for c in clauses if cov.norm(e["contains"]) in cov.norm(c["text"])]
         if len(hits) != 1:
-            raise ValueError(f"rotulo {e['contains']!r} casa com {len(hits)} clausulas: {[c['text'] for c in clauses]}")
+            raise ValueError(f"label {e['contains']!r} matches {len(hits)} clauses: {[c['text'] for c in clauses]}")
         out.append((hits[0], e))
     return out
 
@@ -54,7 +54,7 @@ def simulated_model(policy: str, clauses: list[dict[str, Any]], expect: list[dic
     for c in clauses:
         e = labelled.get(c["clause_id"])
         if e is None:
-            items.append({"clause_id": c["clause_id"], "status": "not_verifiable", "check_ids": [], "reason": "sem rotulo"})
+            items.append({"clause_id": c["clause_id"], "status": "not_verifiable", "check_ids": [], "reason": "no label"})
         else:
             items.append({"clause_id": c["clause_id"], "status": e["status"], "check_ids": e.get("checks", []), "reason": "rotulo"})
     return items

@@ -94,8 +94,8 @@ def test_rate_counts_and_failure_grouping(population, validator):
     assert bad[ids["empty"]]["failed_checks"] == ["chk_reason_filled"] and bad[ids["empty"]]["evidence"]["chk_reason_filled"] == {"observed": None}
     assert bad[ids["notask"]]["failed_checks"] == ["chk_followup_task"] and bad[ids["dup"]]["failed_checks"] == ["chk_followup_task"]
     assert not list(validator("audit_report").iter_errors(r))
-    assert r["summary"]["basis"] == "server" and "7 de 10" in r["summary"]["text"]
-    assert any("NAO auditaveis" in x or "nao auditaveis" in x.lower() for x in r["limitations"])
+    assert r["summary"]["basis"] == "server" and "7 of 10" in r["summary"]["text"]
+    assert any("not auditable" in x.lower() for x in r["limitations"])
 
 
 def test_claimed_but_not_closed_is_caught_by_ids_but_invisible_to_window(population):
@@ -105,7 +105,7 @@ def test_claimed_but_not_closed_is_caught_by_ids_but_invisible_to_window(populat
     assert by_ids["totals"]["incorrect"] == 1 and "chk_status_closed" in by_ids["cases"][0]["failed_checks"]
     window = audit(fake, since="2026-11-01T00:00:00Z", limit=50)
     assert ghost not in {c["case_id"] for c in window["cases"]} and window["totals"]["evaluated"] == 10
-    assert any("ja encerrados" in x for x in window["limitations"])
+    assert any("already closed" in x for x in window["limitations"])
 
 
 def test_window_filters_by_user_and_limit(population):
@@ -129,7 +129,7 @@ def test_task_read_failure_makes_cases_inconclusive_not_correct(population):
     r = audit(fake, case_ids=list(ids.values()))
     assert r["totals"]["correct"] == 0 and r["outcome_rate"] == 0.0
     assert r["totals"]["inconclusive"] == 9 and r["totals"]["incorrect"] == 1       # a falha comprovada (motivo vazio) vence
-    assert r["collection_errors"] and any("falha de leitura" in x.lower() for x in r["limitations"])
+    assert r["collection_errors"] and any("read failure" in x.lower() for x in r["limitations"])
 
 
 def test_missing_case_and_omitted_field_are_inconclusive(population):
@@ -216,7 +216,7 @@ def test_explainer_empty_content_keeps_server_summary(population):
 def test_numeric_guard_limit_is_documented_by_keeping_server_text_next_to_model_text(population):
     """O guarda so barra numeros inexistentes; um numero real usado no contexto errado passa. Por isso o texto do servidor acompanha."""
     rep, _ = explained(population, "8 de 10 registros estao corretos.")
-    assert rep["summary"]["basis"] == "model" and "7 de 10" in rep["summary"]["server_text"]
+    assert rep["summary"]["basis"] == "model" and "7 of 10" in rep["summary"]["server_text"]
 
 
 def test_explainer_upstream_error_keeps_server_summary(population):

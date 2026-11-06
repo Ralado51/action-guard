@@ -1,10 +1,10 @@
-"""Gera contracts/examples/ a partir de dados sinteticos.
+"""Generates contracts/examples/ from synthetic data.
 
-Uso: python contracts/tools/build_examples.py
+Usage: python contracts/tools/build_examples.py
 
-Todos os ids, nomes e valores sao sinteticos. O campo de motivo de encerramento
-(Closure_Reason__c) e ilustrativo: troque pelo API name real da org depois de
-confirma-lo (ver docs/DECISIONS.md).
+All ids, names and values are synthetic. The closure reason field
+(Closure_Reason__c) is illustrative: replace it with the org's real API name after
+confirming it (see docs/DECISIONS.md).
 """
 from __future__ import annotations
 
@@ -45,9 +45,9 @@ rule = {
     "rule_id": "rule-close-case-001",
     "process": "close_case",
     "text_pt": (
-        "Ao encerrar um Case: o motivo de encerramento deve estar preenchido, "
-        "o proprietario deve permanecer o mesmo e uma Task de acompanhamento "
-        "deve ser criada e vinculada ao Case."
+        "When closing a Case: the closure reason must be filled, "
+        "the owner must stay the same and a follow-up Task "
+        "must be created and linked to the Case."
     ),
     "created_at": "2026-11-03T17:00:00Z",
 }
@@ -60,9 +60,9 @@ plan_draft = {
     "rule_id": rule["rule_id"],
     "approval": None,
     "preconditions": [
-        {"id": "pre_open", "description": "O Case sintetico esta aberto antes da acao.",
+        {"id": "pre_open", "description": "The synthetic Case is open before the action.",
          "object": "Case", "field": "IsClosed", "expected": False},
-        {"id": "pre_reason_empty", "description": "O motivo de encerramento esta vazio antes da acao.",
+        {"id": "pre_reason_empty", "description": "The closure reason is empty before the action.",
          "object": "Case", "field": REASON, "expected": None},
     ],
     "action": {
@@ -79,20 +79,20 @@ plan_draft = {
     "async_window": {"max_wait_seconds": 30, "poll_interval_seconds": 5},
     "checks": [
         {"check_id": "chk_status_closed", "kind": "field_equals",
-         "description": "O Case foi encerrado.", "object": "Case", "field": "Status", "expected": "Closed"},
+         "description": "The Case was closed.", "object": "Case", "field": "Status", "expected": "Closed"},
         {"check_id": "chk_reason_filled", "kind": "field_not_empty",
-         "description": "O motivo de encerramento esta preenchido.", "object": "Case", "field": REASON},
+         "description": "The closure reason is filled.", "object": "Case", "field": REASON},
         {"check_id": "chk_reason_matches", "kind": "field_equals",
-         "description": "O motivo de encerramento e o informado no plano.", "object": "Case",
+         "description": "The closure reason is the one given in the plan.", "object": "Case",
          "field": REASON, "expected": CLOSURE_REASON},
         {"check_id": "chk_owner_unchanged", "kind": "field_unchanged",
-         "description": "O proprietario do Case nao mudou.", "object": "Case", "field": "OwnerId"},
+         "description": "The Case owner did not change.", "object": "Case", "field": "OwnerId"},
         {"check_id": "chk_followup_task", "kind": "record_created",
-         "description": "Exatamente uma nova Task de acompanhamento, com o Subject esperado, foi criada e vinculada ao Case.",
+         "description": "Exactly one new follow-up Task, with the expected Subject, was created and linked to the Case.",
          "object": "Task", "link_field": "WhatId", "expected_count": 1,
          "match": {"Subject": TASK_SUBJECT}},
         {"check_id": "chk_no_unexpected", "kind": "no_unexpected_change",
-         "description": "Nenhum outro campo monitorado mudou.", "object": "*",
+         "description": "No other monitored field changed.", "object": "*",
          "allowed_changes": ["Case.Status", f"Case.{REASON}", "Case.ClosedDate", "Case.IsClosed"]},
     ],
 }
@@ -176,7 +176,7 @@ def with_reason_match(results):
             m = copy.deepcopy(r)
             m["check_id"], m["kind"] = "chk_reason_matches", "field_equals"
             if m["status"] == "passed":
-                m["reason"] = "O motivo de encerramento e igual ao informado no plano."
+                m["reason"] = "The closure reason equals the one given in the plan."
             out.append(m)
     return out
 
@@ -202,8 +202,8 @@ def report(run_id, results, unexpected, limitations):
 
 
 STD_LIMITS = [
-    "no_unexpected_change cobre somente os registros e campos monitorados pelo plano.",
-    "A acao foi disparada pelo Agent API do Agentforce; a resposta do agente e narrativa e nao substitui a evidencia dos registros.",
+    "no_unexpected_change covers only the records and fields monitored by the plan.",
+    "The action was triggered through the Agentforce Agent API; the agent's response is narrative and does not replace the evidence in the records.",
 ]
 
 
@@ -227,11 +227,11 @@ write(EX / "test_plan.json", plan_approved)
 # 1) sucesso
 rid, b, a = scenario("success", case_rec(**CLOSED), [OLD_TASK_REC, NEW_TASK_REC])
 res = [
-    result(rid, "chk_status_closed", "field_equals", "passed", "Status mudou para Closed.", [CASE_ID], ["Status"], "New", "Closed"),
-    result(rid, "chk_reason_filled", "field_not_empty", "passed", "O motivo de encerramento foi preenchido.", [CASE_ID], [REASON], None, CLOSED[REASON]),
-    result(rid, "chk_owner_unchanged", "field_unchanged", "passed", "OwnerId permaneceu igual.", [CASE_ID], ["OwnerId"], OWNER_1, OWNER_1),
-    result(rid, "chk_followup_task", "record_created", "passed", "Exatamente uma nova Task com o Subject esperado foi criada e vinculada ao Case por WhatId.", [NEW_TASK], ["WhatId"], None, CASE_ID),
-    result(rid, "chk_no_unexpected", "no_unexpected_change", "passed", "Nenhum campo monitorado mudou fora de allowed_changes.", [CASE_ID, OLD_TASK], ["Case.*", "Task.*"]),
+    result(rid, "chk_status_closed", "field_equals", "passed", "Status changed to Closed.", [CASE_ID], ["Status"], "New", "Closed"),
+    result(rid, "chk_reason_filled", "field_not_empty", "passed", "The closure reason was filled.", [CASE_ID], [REASON], None, CLOSED[REASON]),
+    result(rid, "chk_owner_unchanged", "field_unchanged", "passed", "OwnerId stayed the same.", [CASE_ID], ["OwnerId"], OWNER_1, OWNER_1),
+    result(rid, "chk_followup_task", "record_created", "passed", "Exactly one new Task with the expected Subject was created and linked to the Case by WhatId.", [NEW_TASK], ["WhatId"], None, CASE_ID),
+    result(rid, "chk_no_unexpected", "no_unexpected_change", "passed", "No monitored field changed outside allowed_changes.", [CASE_ID, OLD_TASK], ["Case.*", "Task.*"]),
 ]
 write(EX / "success" / "before.json", b)
 write(EX / "success" / "after.json", a)
@@ -240,11 +240,11 @@ write(EX / "success" / "report.json", report(rid, res, [], STD_LIMITS))
 # 2) proprietario alterado
 rid, b, a = scenario("owner_changed", case_rec(**CLOSED, OwnerId=OWNER_2), [OLD_TASK_REC, NEW_TASK_REC])
 res = [
-    result(rid, "chk_status_closed", "field_equals", "passed", "Status mudou para Closed.", [CASE_ID], ["Status"], "New", "Closed"),
-    result(rid, "chk_reason_filled", "field_not_empty", "passed", "O motivo de encerramento foi preenchido.", [CASE_ID], [REASON], None, CLOSED[REASON]),
-    result(rid, "chk_owner_unchanged", "field_unchanged", "failed", "OwnerId mudou durante o encerramento.", [CASE_ID], ["OwnerId"], OWNER_1, OWNER_2),
-    result(rid, "chk_followup_task", "record_created", "passed", "Exatamente uma nova Task com o Subject esperado foi criada e vinculada ao Case por WhatId.", [NEW_TASK], ["WhatId"], None, CASE_ID),
-    result(rid, "chk_no_unexpected", "no_unexpected_change", "failed", "OwnerId mudou e nao esta em allowed_changes.", [CASE_ID], ["Case.OwnerId"], OWNER_1, OWNER_2),
+    result(rid, "chk_status_closed", "field_equals", "passed", "Status changed to Closed.", [CASE_ID], ["Status"], "New", "Closed"),
+    result(rid, "chk_reason_filled", "field_not_empty", "passed", "The closure reason was filled.", [CASE_ID], [REASON], None, CLOSED[REASON]),
+    result(rid, "chk_owner_unchanged", "field_unchanged", "failed", "OwnerId changed during the closure.", [CASE_ID], ["OwnerId"], OWNER_1, OWNER_2),
+    result(rid, "chk_followup_task", "record_created", "passed", "Exactly one new Task with the expected Subject was created and linked to the Case by WhatId.", [NEW_TASK], ["WhatId"], None, CASE_ID),
+    result(rid, "chk_no_unexpected", "no_unexpected_change", "failed", "OwnerId changed and is not in allowed_changes.", [CASE_ID], ["Case.OwnerId"], OWNER_1, OWNER_2),
 ]
 unexpected = [{"object": "Case", "record_id": CASE_ID, "field": "OwnerId", "before": OWNER_1, "after": OWNER_2}]
 write(EX / "owner_changed" / "before.json", b)
@@ -254,57 +254,57 @@ write(EX / "owner_changed" / "report.json", report(rid, res, unexpected, STD_LIM
 # 3) tarefa ausente
 rid, b, a = scenario("task_missing", case_rec(**CLOSED), [OLD_TASK_REC])
 res = [
-    result(rid, "chk_status_closed", "field_equals", "passed", "Status mudou para Closed.", [CASE_ID], ["Status"], "New", "Closed"),
-    result(rid, "chk_reason_filled", "field_not_empty", "passed", "O motivo de encerramento foi preenchido.", [CASE_ID], [REASON], None, CLOSED[REASON]),
-    result(rid, "chk_owner_unchanged", "field_unchanged", "passed", "OwnerId permaneceu igual.", [CASE_ID], ["OwnerId"], OWNER_1, OWNER_1),
-    result(rid, "chk_followup_task", "record_created", "failed", "Nenhuma Task nova com o Subject esperado vinculada ao Case apareceu dentro da janela de espera.", [], ["WhatId"], None, None),
-    result(rid, "chk_no_unexpected", "no_unexpected_change", "passed", "Nenhum campo monitorado mudou fora de allowed_changes.", [CASE_ID, OLD_TASK], ["Case.*", "Task.*"]),
+    result(rid, "chk_status_closed", "field_equals", "passed", "Status changed to Closed.", [CASE_ID], ["Status"], "New", "Closed"),
+    result(rid, "chk_reason_filled", "field_not_empty", "passed", "The closure reason was filled.", [CASE_ID], [REASON], None, CLOSED[REASON]),
+    result(rid, "chk_owner_unchanged", "field_unchanged", "passed", "OwnerId stayed the same.", [CASE_ID], ["OwnerId"], OWNER_1, OWNER_1),
+    result(rid, "chk_followup_task", "record_created", "failed", "No new Task with the expected Subject linked to the Case appeared within the wait window.", [], ["WhatId"], None, None),
+    result(rid, "chk_no_unexpected", "no_unexpected_change", "passed", "No monitored field changed outside allowed_changes.", [CASE_ID, OLD_TASK], ["Case.*", "Task.*"]),
 ]
 write(EX / "task_missing" / "before.json", b)
 write(EX / "task_missing" / "after.json", a)
 write(EX / "task_missing" / "report.json", report(rid, res, [], STD_LIMITS))
 
 # 4) coleta inconclusiva (falha ao consultar Task)
-err = [{"object": "Task", "message": "Timeout ao consultar Task apos a janela de espera."}]
+err = [{"object": "Task", "message": "Timeout while querying Task after the wait window."}]
 rid, b, a = scenario("inconclusive", case_rec(**CLOSED), [], complete=False, errors=err)
 res = [
-    result(rid, "chk_status_closed", "field_equals", "passed", "Status mudou para Closed.", [CASE_ID], ["Status"], "New", "Closed"),
-    result(rid, "chk_reason_filled", "field_not_empty", "passed", "O motivo de encerramento foi preenchido.", [CASE_ID], [REASON], None, CLOSED[REASON]),
-    result(rid, "chk_owner_unchanged", "field_unchanged", "passed", "OwnerId permaneceu igual.", [CASE_ID], ["OwnerId"], OWNER_1, OWNER_1),
-    result(rid, "chk_followup_task", "record_created", "inconclusive", "A consulta de Task falhou; nao e possivel afirmar se a Task foi criada.", [], ["WhatId"]),
-    result(rid, "chk_no_unexpected", "no_unexpected_change", "inconclusive", "O snapshot posterior esta incompleto (Task); a ausencia de mudancas nao pode ser afirmada.", [CASE_ID], ["Case.*"]),
+    result(rid, "chk_status_closed", "field_equals", "passed", "Status changed to Closed.", [CASE_ID], ["Status"], "New", "Closed"),
+    result(rid, "chk_reason_filled", "field_not_empty", "passed", "The closure reason was filled.", [CASE_ID], [REASON], None, CLOSED[REASON]),
+    result(rid, "chk_owner_unchanged", "field_unchanged", "passed", "OwnerId stayed the same.", [CASE_ID], ["OwnerId"], OWNER_1, OWNER_1),
+    result(rid, "chk_followup_task", "record_created", "inconclusive", "The Task query failed; it is not possible to say whether the Task was created.", [], ["WhatId"]),
+    result(rid, "chk_no_unexpected", "no_unexpected_change", "inconclusive", "The after-snapshot is incomplete (Task); the absence of changes cannot be asserted.", [CASE_ID], ["Case.*"]),
 ]
 write(EX / "inconclusive" / "before.json", b)
 write(EX / "inconclusive" / "after.json", a)
 write(EX / "inconclusive" / "report.json",
-      report(rid, res, [], STD_LIMITS + ["Falha de coleta em Task: as verificacoes que dependem de Task ficaram inconclusivas."]))
+      report(rid, res, [], STD_LIMITS + ["Collection failure on Task: the checks that depend on Task are inconclusive."]))
 
 # 5) campo monitorado nao coletado (OwnerId ausente nos DOIS snapshots; chave ausente != null)
 rid = "run-synthetic-evidence_missing-001"
 b = snapshot(rid, "before", {"Case": [drop(case_rec(), "OwnerId")], "Task": [OLD_TASK_REC]})
 a = snapshot(rid, "after", {"Case": [drop(case_rec(**CLOSED), "OwnerId")], "Task": [OLD_TASK_REC, NEW_TASK_REC]})
 res = [
-    result(rid, "chk_status_closed", "field_equals", "passed", "Status mudou para Closed.", [CASE_ID], ["Status"], "New", "Closed"),
-    result(rid, "chk_reason_filled", "field_not_empty", "passed", "O motivo de encerramento foi preenchido.", [CASE_ID], [REASON], None, CLOSED[REASON]),
-    result(rid, "chk_owner_unchanged", "field_unchanged", "inconclusive", "OwnerId nao foi coletado em nenhum dos snapshots; sem evidencia para afirmar que nao mudou.", [CASE_ID], ["OwnerId"]),
-    result(rid, "chk_followup_task", "record_created", "passed", "Exatamente uma nova Task com o Subject esperado foi criada e vinculada ao Case por WhatId.", [NEW_TASK], ["WhatId"], None, CASE_ID),
-    result(rid, "chk_no_unexpected", "no_unexpected_change", "inconclusive", "O campo monitorado Case.OwnerId nao foi coletado; a ausencia de mudancas nao pode ser afirmada.", [CASE_ID], ["Case.OwnerId"]),
+    result(rid, "chk_status_closed", "field_equals", "passed", "Status changed to Closed.", [CASE_ID], ["Status"], "New", "Closed"),
+    result(rid, "chk_reason_filled", "field_not_empty", "passed", "The closure reason was filled.", [CASE_ID], [REASON], None, CLOSED[REASON]),
+    result(rid, "chk_owner_unchanged", "field_unchanged", "inconclusive", "OwnerId was not collected in either snapshot; no evidence to claim it did not change.", [CASE_ID], ["OwnerId"]),
+    result(rid, "chk_followup_task", "record_created", "passed", "Exactly one new Task with the expected Subject was created and linked to the Case by WhatId.", [NEW_TASK], ["WhatId"], None, CASE_ID),
+    result(rid, "chk_no_unexpected", "no_unexpected_change", "inconclusive", "The monitored field Case.OwnerId was not collected; the absence of changes cannot be asserted.", [CASE_ID], ["Case.OwnerId"]),
 ]
 write(EX / "evidence_missing" / "before.json", b)
 write(EX / "evidence_missing" / "after.json", a)
 write(EX / "evidence_missing" / "report.json",
-      report(rid, res, [], STD_LIMITS + ["Case.OwnerId ausente dos snapshots sem collection_errors: contrato do coletor violado."]))
+      report(rid, res, [], STD_LIMITS + ["Case.OwnerId missing from the snapshots without collection_errors: collector contract violated."]))
 
 # 6) exclusao CONFIRMADA do Case (confirmed_absent): falha comprovada
-absent = [{"object": "Case", "id": CASE_ID, "basis": "queryAll com IsDeleted = true retornou o registro"}]
+absent = [{"object": "Case", "id": CASE_ID, "basis": "queryAll with IsDeleted = true returned the record"}]
 rid, b, a = scenario("case_deleted", None, [OLD_TASK_REC], absent=absent)
-gone = "O Case foi excluido (ausencia confirmada por queryAll)."
+gone = "The Case was deleted (absence confirmed by queryAll)."
 res = [
     result(rid, "chk_status_closed", "field_equals", "failed", gone, [CASE_ID], ["Status"], "New", None),
     result(rid, "chk_reason_filled", "field_not_empty", "failed", gone, [CASE_ID], [REASON], None, None),
     result(rid, "chk_owner_unchanged", "field_unchanged", "failed", gone, [CASE_ID], ["OwnerId"], OWNER_1, None),
-    result(rid, "chk_followup_task", "record_created", "failed", "Nenhuma Task nova com o Subject esperado vinculada ao Case apareceu dentro da janela de espera.", [], ["WhatId"], None, None),
-    result(rid, "chk_no_unexpected", "no_unexpected_change", "failed", "O Case monitorado foi excluido.", [CASE_ID], ["Case.__record__"], "present", "deleted"),
+    result(rid, "chk_followup_task", "record_created", "failed", "No new Task with the expected Subject linked to the Case appeared within the wait window.", [], ["WhatId"], None, None),
+    result(rid, "chk_no_unexpected", "no_unexpected_change", "failed", "The monitored Case was deleted.", [CASE_ID], ["Case.__record__"], "present", "deleted"),
 ]
 unexpected = [{"object": "Case", "record_id": CASE_ID, "field": "__record__", "before": "present", "after": "deleted"}]
 write(EX / "case_deleted" / "before.json", b)
@@ -312,32 +312,32 @@ write(EX / "case_deleted" / "after.json", a)
 write(EX / "case_deleted" / "report.json", report(rid, res, unexpected, STD_LIMITS))
 
 # 7) Case sumiu SEM confirmacao (falha de coleta): evidencia insuficiente, nao exclusao
-err = [{"object": "Case", "message": "A consulta de Case nao retornou o registro e a ausencia nao pode ser confirmada."}]
+err = [{"object": "Case", "message": "The Case query did not return the record and the absence cannot be confirmed."}]
 rid, b, a = scenario("case_unconfirmed", None, [OLD_TASK_REC, NEW_TASK_REC], complete=False, errors=err)
-unk = "O Case nao foi observado no snapshot posterior e a exclusao nao foi confirmada."
+unk = "The Case was not observed in the after-snapshot and the deletion was not confirmed."
 res = [
     result(rid, "chk_status_closed", "field_equals", "inconclusive", unk, [CASE_ID], ["Status"]),
     result(rid, "chk_reason_filled", "field_not_empty", "inconclusive", unk, [CASE_ID], [REASON]),
     result(rid, "chk_owner_unchanged", "field_unchanged", "inconclusive", unk, [CASE_ID], ["OwnerId"]),
-    result(rid, "chk_followup_task", "record_created", "passed", "Exatamente uma nova Task com o Subject esperado foi criada e vinculada ao Case por WhatId.", [NEW_TASK], ["WhatId"], None, CASE_ID),
-    result(rid, "chk_no_unexpected", "no_unexpected_change", "inconclusive", "O Case nao foi observado; a ausencia de mudancas nao pode ser afirmada.", [CASE_ID], ["Case.*"]),
+    result(rid, "chk_followup_task", "record_created", "passed", "Exactly one new Task with the expected Subject was created and linked to the Case by WhatId.", [NEW_TASK], ["WhatId"], None, CASE_ID),
+    result(rid, "chk_no_unexpected", "no_unexpected_change", "inconclusive", "The Case was not observed; the absence of changes cannot be asserted.", [CASE_ID], ["Case.*"]),
 ]
 write(EX / "case_unconfirmed" / "before.json", b)
 write(EX / "case_unconfirmed" / "after.json", a)
 write(EX / "case_unconfirmed" / "report.json",
-      report(rid, res, [], STD_LIMITS + ["Falha de coleta em Case: as verificacoes sobre o Case ficaram inconclusivas, sem afirmar exclusao."]))
+      report(rid, res, [], STD_LIMITS + ["Collection failure on Case: the checks on the Case are inconclusive, without claiming deletion."]))
 
 # 8) Task duplicada (acao nao idempotente): falha comprovada
 rid, b, a = scenario("duplicate_tasks", case_rec(**CLOSED), [OLD_TASK_REC, NEW_TASK_REC, DUP_TASK_REC])
 res = [
-    result(rid, "chk_status_closed", "field_equals", "passed", "Status mudou para Closed.", [CASE_ID], ["Status"], "New", "Closed"),
-    result(rid, "chk_reason_filled", "field_not_empty", "passed", "O motivo de encerramento foi preenchido.", [CASE_ID], [REASON], None, CLOSED[REASON]),
-    result(rid, "chk_owner_unchanged", "field_unchanged", "passed", "OwnerId permaneceu igual.", [CASE_ID], ["OwnerId"], OWNER_1, OWNER_1),
-    result(rid, "chk_followup_task", "record_created", "failed", "Foram criadas 2 Tasks novas com o Subject esperado; o plano exige exatamente 1.", [NEW_TASK, DUP_TASK], ["WhatId", "Subject"], None, CASE_ID),
-    result(rid, "chk_no_unexpected", "no_unexpected_change", "passed", "Nenhum campo monitorado mudou fora de allowed_changes.", [CASE_ID, OLD_TASK], ["Case.*", "Task.*"]),
+    result(rid, "chk_status_closed", "field_equals", "passed", "Status changed to Closed.", [CASE_ID], ["Status"], "New", "Closed"),
+    result(rid, "chk_reason_filled", "field_not_empty", "passed", "The closure reason was filled.", [CASE_ID], [REASON], None, CLOSED[REASON]),
+    result(rid, "chk_owner_unchanged", "field_unchanged", "passed", "OwnerId stayed the same.", [CASE_ID], ["OwnerId"], OWNER_1, OWNER_1),
+    result(rid, "chk_followup_task", "record_created", "failed", "2 new Tasks with the expected Subject were created; the plan requires exactly 1.", [NEW_TASK, DUP_TASK], ["WhatId", "Subject"], None, CASE_ID),
+    result(rid, "chk_no_unexpected", "no_unexpected_change", "passed", "No monitored field changed outside allowed_changes.", [CASE_ID, OLD_TASK], ["Case.*", "Task.*"]),
 ]
 write(EX / "duplicate_tasks" / "before.json", b)
 write(EX / "duplicate_tasks" / "after.json", a)
 write(EX / "duplicate_tasks" / "report.json", report(rid, res, [], STD_LIMITS))
 
-print("exemplos gerados em", EX)
+print("examples generated in", EX)

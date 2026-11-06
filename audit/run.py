@@ -29,12 +29,12 @@ def run_audit(plan: dict[str, Any], rest: SalesforceRest, *, case_ids: list[str]
               since: str | None = None, modified_by: str | None = None, limit: int = 200,
               audit_id: str | None = None, now: Callable[[], str] = _now) -> dict[str, Any]:
     if not approval_is_valid(plan):
-        raise AuditBlocked("O plano precisa estar aprovado (hash vigente) para ser usado numa auditoria.")
+        raise AuditBlocked("The plan must be approved (current hash) to be used in an audit.")
     if bool(case_ids) == bool(since):
         raise AuditBlocked("Informe exatamente um entre case_ids e since.")
     auditable, skipped = classify_checks(plan)
     if not auditable:
-        raise AuditBlocked("Nenhuma verificacao do plano e auditavel apenas com o estado final.")
+        raise AuditBlocked("No check in the plan is auditable from the final state alone.")
     primary = next(c["object"] for c in auditable if c["kind"] != "record_created") if any(
         c["kind"] != "record_created" for c in auditable) else "Case"
     fields = needed_fields(auditable)
@@ -43,18 +43,18 @@ def run_audit(plan: dict[str, Any], rest: SalesforceRest, *, case_ids: list[str]
     if case_ids:
         ordered = list(dict.fromkeys(to_sfid18(i) for i in case_ids))
         if len(ordered) > collect.MAX_CASES:
-            raise AuditBlocked(f"No maximo {collect.MAX_CASES} registros por auditoria.")
+            raise AuditBlocked(f"At most {collect.MAX_CASES} records per audit.")
         try:
             found = collect.fetch_cases_by_ids(rest, primary, fields.get(primary, []), ordered)
         except QueryError as e:
-            found, errors = {}, [f"Leitura dos registros principais falhou: {e}"]
+            found, errors = {}, [f"Reading the main records failed: {e}"]
         rows = [(i, found.get(key15(i))) for i in ordered]
         mode = "case_ids"
     else:
         try:
             listed = collect.fetch_cases_window(rest, primary, fields.get(primary, []), since, limit, modified_by)
         except QueryError as e:
-            listed, errors = [], [f"Leitura dos registros principais falhou: {e}"]
+            listed, errors = [], [f"Reading the main records failed: {e}"]
         rows = [(r["Id"], r) for r in listed]
         mode = "closed_window"
 
@@ -67,7 +67,7 @@ def run_audit(plan: dict[str, Any], rest: SalesforceRest, *, case_ids: list[str]
                 linked[c["object"]] = collect.fetch_linked(rest, c["object"], c["link_field"], fields[c["object"]], ids_present) if ids_present else []
             except QueryError as e:
                 linked_error.add(c["object"])
-                errors.append(f"Leitura de {c['object']} falhou: {e}")
+                errors.append(f"Reading {c['object']} failed: {e}")
 
     per_case, by_check = [], {c["check_id"]: Counter() for c in auditable}
     for cid, row in rows:
@@ -86,17 +86,17 @@ def run_audit(plan: dict[str, Any], rest: SalesforceRest, *, case_ids: list[str]
                     for c in per_case if c["status"] != CORRECT]
     coverage = plan.get("rule_coverage")
     limitations = [
-        "Auditoria somente leitura do ESTADO FINAL: sem o estado anterior, nao verifica proprietario preservado nem mudancas inesperadas.",
-        "Taxa = registros sem nenhuma falha entre as verificacoes auditaveis; registros inconclusivos NAO contam como corretos.",
-        ("Selecao por janela audita apenas registros ja encerrados: um agente que disse ter encerrado e nao encerrou nao aparece aqui. Use a lista de Cases informados pelo agente para cobrir esse caso."
+        "Read-only audit of the FINAL STATE: without the previous state, it does not verify that the owner was preserved or that no unexpected changes occurred.",
+        "Rate = records with no failure among the auditable checks; inconclusive records do NOT count as correct.",
+        ("Window selection audits only records that are already closed: a Case the agent claimed to close but did not will not appear here. Use the list of Cases reported by the agent to cover that case."
          if mode == "closed_window" else
-         "Selecao por lista: so os registros informados foram auditados; nada se afirma sobre os demais."),
-        "Uma Task correspondente conta mesmo se existia antes da acao do agente (a auditoria nao sabe quando foi criada).",
+         "List selection: only the given records were audited; nothing is claimed about the others."),
+        "A matching Task counts even if it existed before the agent's action (the audit does not know when it was created).",
     ]
     if linked_error or errors:
-        limitations.append("Houve falha de leitura: os registros afetados ficam inconclusivos.")
+        limitations.append("A read failure occurred: the affected records are inconclusive.")
     if skipped:
-        limitations.append("Verificacoes do plano NAO auditaveis aqui: " + ", ".join(s["check_id"] for s in skipped) + ".")
+        limitations.append("Plan checks NOT auditable here: " + ", ".join(s["check_id"] for s in skipped) + ".")
     report: dict[str, Any] = {
         "schema_version": "1.0", "audit_id": audit_id or "audit-" + uuid.uuid4().hex, "generated_at": now(),
         "plan_id": plan["plan_id"], "plan_version": plan["plan_version"], "plan_hash": plan["plan_hash"],
@@ -123,14 +123,14 @@ def run_audit(plan: dict[str, Any], rest: SalesforceRest, *, case_ids: list[str]
 def deterministic_summary(r: dict[str, Any]) -> str:
     t = r["totals"]
     if not t["evaluated"]:
-        return "Nenhum registro avaliado."
+        return "No records evaluated."
     pct = f"{r['outcome_rate'] * 100:.1f}".rstrip("0").rstrip(".")
-    parts = [f"{t['correct']} de {t['evaluated']} registros ({pct}%) atenderam todas as verificacoes auditaveis"]
+    parts = [f"{t['correct']} of {t['evaluated']} records ({pct}%) met every auditable check"]
     if t["incorrect"]:
         worst = max(r["by_check"], key=lambda c: c["failed"])
-        parts.append(f"{t['incorrect']} falharam (mais frequente: {worst['description']} — {worst['failed']})")
+        parts.append(f"{t['incorrect']} failed (most frequent: {worst['description']} — {worst['failed']})")
     if t["inconclusive"]:
-        parts.append(f"{t['inconclusive']} ficaram inconclusivos")
+        parts.append(f"{t['inconclusive']} were inconclusive")
     if r["not_auditable"]:
-        parts.append(f"{len(r['not_auditable'])} verificacao(oes) do plano nao puderam ser auditadas")
+        parts.append(f"{len(r['not_auditable'])} plan check(s) could not be audited")
     return "; ".join(parts) + "."

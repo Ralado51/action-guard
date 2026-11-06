@@ -17,7 +17,7 @@ from .transport import Transport, TransportError
 # Resultado da chamada que envia o pedido:
 SENT_OK = "response_received"        # HTTP 2xx
 REJECTED = "rejected_before_action"  # sessao nao abriu ou 4xx: a acao provavelmente nao rodou
-UNCERTAIN = "uncertain"              # timeout/5xx/erro de rede apos enviar: a acao PODE ter rodado
+UNCERTAIN = "uncertain"              # timeout/5xx/network error apos enviar: a acao PODE ter rodado
 
 
 @dataclass
@@ -82,12 +82,12 @@ class AgentClient:
                                           headers=self._h(), body=json.dumps(body).encode(),
                                           timeout=self.cfg.rest_timeout_seconds)
         except TransportError as e:
-            rec.error = f"falha ao abrir sessao (nenhuma mensagem foi enviada): {e}"
+            rec.error = f"failed to open a session (no message was sent): {e}"
             return
         sid = resp.body.get("sessionId") if isinstance(resp.body, dict) else None
         if not resp.ok or not sid:
             rec.http_status = resp.status
-            rec.error = f"sessao nao aberta (HTTP {resp.status}); nenhuma mensagem foi enviada"
+            rec.error = f"session not opened (HTTP {resp.status}); no message was sent"
             return
         rec.session_id = sid
 
@@ -99,8 +99,8 @@ class AgentClient:
                                           timeout=self.cfg.agent_timeout_seconds)
         except TransportError as e:
             rec.outcome = UNCERTAIN
-            rec.error = (f"{'timeout' if e.timed_out else 'erro de rede'} apos enviar o pedido: {e}. "
-                         "A acao pode ter sido executada; reconciliar por evidencia e revisao humana antes de tentar de novo.")
+            rec.error = (f"{'timeout' if e.timed_out else 'network error'} apos enviar o pedido: {e}. "
+                         "The action may have been executed; reconcile using evidence and human review before trying again.")
             return
         rec.http_status, rec.response = resp.status, resp.body
         rec.agent_text = extract_agent_text(resp.body)
@@ -108,10 +108,10 @@ class AgentClient:
             rec.outcome = SENT_OK
         elif 400 <= resp.status < 500:
             rec.outcome = REJECTED
-            rec.error = f"pedido recusado (HTTP {resp.status})"
+            rec.error = f"request refused (HTTP {resp.status})"
         else:
             rec.outcome = UNCERTAIN
-            rec.error = f"erro do servidor (HTTP {resp.status}) apos enviar o pedido; a acao pode ter sido executada"
+            rec.error = f"server error (HTTP {resp.status}) after sending the request; the action may have been executed"
 
     def _close(self, rec: AgentCallRecord) -> None:
         try:
@@ -119,6 +119,6 @@ class AgentClient:
                                           headers=self._h({"x-session-end-reason": "UserRequest"}),
                                           timeout=self.cfg.rest_timeout_seconds)
             if not resp.ok:
-                rec.session_close_error = f"encerramento recusado (HTTP {resp.status})"
+                rec.session_close_error = f"close refused (HTTP {resp.status})"
         except TransportError as e:
-            rec.session_close_error = f"falha ao encerrar sessao: {e}"
+            rec.session_close_error = f"failed to close the session: {e}"

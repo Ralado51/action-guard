@@ -25,13 +25,13 @@ def validate_plan_semantics(plan: dict[str, Any]) -> list[str]:
         issues.append(f"check_id duplicado: {dup}")
 
     if sum(c["kind"] == "no_unexpected_change" for c in plan["checks"]) > 1:
-        issues.append("no maximo uma verificacao no_unexpected_change por plano")
+        issues.append("at most one no_unexpected_change check per plan")
 
     def need(obj: str, field: str | None, where: str) -> None:
         if obj not in monitored:
-            issues.append(f"{where}: objeto {obj} nao esta em monitored")
+            issues.append(f"{where}: objeto {obj} is not in monitored")
         elif field is not None and field not in monitored[obj]:
-            issues.append(f"{where}: campo {obj}.{field} nao esta em monitored")
+            issues.append(f"{where}: field {obj}.{field} is not in monitored")
 
     for c in plan["checks"]:
         where = f"check {c['check_id']}"
@@ -48,13 +48,13 @@ def validate_plan_semantics(plan: dict[str, Any]) -> list[str]:
 
     cov_ids = [i["clause_id"] for i in plan.get("rule_coverage", [])]
     for dup in sorted({i for i in cov_ids if cov_ids.count(i) > 1}):
-        issues.append(f"clause_id duplicado em rule_coverage: {dup}")
+        issues.append(f"duplicate clause_id in rule_coverage: {dup}")
     for item in plan.get("rule_coverage", []):
         for cid in item["check_ids"]:
             if cid not in ids:
-                issues.append(f"rule_coverage {item['clause_id']}: check_id {cid} nao existe no plano")
+                issues.append(f"rule_coverage {item['clause_id']}: check_id {cid} does not exist in the plan")
         if item["status"] == "covered" and not item["check_ids"]:
-            issues.append(f"rule_coverage {item['clause_id']}: covered exige ao menos um check_id")
+            issues.append(f"rule_coverage {item['clause_id']}: covered requires at least one check_id")
 
     for pre in plan.get("preconditions", []):
         if "object" in pre:
@@ -70,7 +70,7 @@ def _tracked_ids(plan, before) -> dict[str, set[str]]:
 def validate_snapshot_pair(plan: dict[str, Any], before: dict[str, Any], after: dict[str, Any]) -> list[str]:
     issues: list[str] = []
     if before["phase"] != "before" or after["phase"] != "after":
-        issues.append("fases invertidas ou repetidas")
+        issues.append("phases reversed or repeated")
     if before["run_id"] != after["run_id"]:
         issues.append("run_id diferente entre os snapshots")
     if before["primary_record"] != after["primary_record"]:
@@ -83,12 +83,12 @@ def validate_snapshot_pair(plan: dict[str, Any], before: dict[str, Any], after: 
             if obj in errored:
                 continue
             if obj not in snap["records"]:
-                issues.append(f"{name}: objeto monitorado {obj} ausente de records sem collection_errors")
+                issues.append(f"{name}: objeto monitorado {obj} missing from records without collection_errors")
                 continue
             for rec in snap["records"][obj]:
                 for f in fields:
                     if f not in rec["fields"]:
-                        issues.append(f"{name}: campo monitorado {obj}.{f} nao coletado em {rec['id']}")
+                        issues.append(f"{name}: monitored field {obj}.{f} not collected in {rec['id']}")
 
     tracked = _tracked_ids(plan, before)
     absent = {(a["object"], a["id"]) for a in after.get("confirmed_absent", [])}
@@ -99,10 +99,10 @@ def validate_snapshot_pair(plan: dict[str, Any], before: dict[str, Any], after: 
             continue
         for rid in sorted(ids):
             if rid not in after_ids.get(obj, set()) and (obj, rid) not in absent:
-                issues.append(f"after: {obj} {rid} sumiu sem estar em records nem em confirmed_absent")
+                issues.append(f"after: {obj} {rid} disappeared without being in records or confirmed_absent")
     for obj, rid in sorted(absent):
         if rid not in tracked.get(obj, set()):
-            issues.append(f"confirmed_absent: {obj} {rid} nao existia no snapshot anterior")
+            issues.append(f"confirmed_absent: {obj} {rid} did not exist in the previous snapshot")
         if rid in after_ids.get(obj, set()):
-            issues.append(f"confirmed_absent: {obj} {rid} tambem aparece em records")
+            issues.append(f"confirmed_absent: {obj} {rid} also appears in records")
     return issues

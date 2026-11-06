@@ -128,7 +128,7 @@ def test_action_timeout_is_uncertain_not_retried_and_reconciled_by_evidence(tmp_
     assert fake.action_calls == 1                       # nunca repetiu a mensagem
     call = json.loads((tmp_path / "run-sim-001" / "agent_call.json").read_text())
     assert call["outcome"] == UNCERTAIN
-    assert any("incerto" in l for l in rep["limitations"])
+    assert any("uncertain" in l for l in rep["limitations"])
     assert rep["status"] == "passed"                    # os dados mostram o efeito; revisao humana ainda e exigida
 
 
@@ -151,20 +151,20 @@ def test_client_error_is_rejected(tmp_path):
 def test_session_not_opened_means_no_message_sent(tmp_path):
     fake, rep = run(sim.close_ok, tmp_path, lambda f: setattr(f, "open_status", 500))
     assert fake.action_calls == 0 and rep["status"] == "failed"
-    assert any("nao chegou a executar" in l for l in rep["limitations"])
+    assert any("did not execute" in l for l in rep["limitations"])
 
 
 def test_after_snapshot_failure_is_inconclusive(tmp_path):
     _, rep = run(sim.close_ok, tmp_path, lambda f: setattr(f, "fail_task_query_after_action", True))
     s = by_id(rep)
     assert s["chk_followup_task"] == "inconclusive" and rep["status"] == "inconclusive"
-    assert any("incompleto" in l for l in rep["limitations"])
+    assert any("ncomplete" in l for l in rep["limitations"])
 
 
 def test_session_close_failure_keeps_main_result(tmp_path):
     _, rep = run(sim.close_ok, tmp_path, lambda f: setattr(f, "close_fails", True))
     assert rep["status"] == "passed"
-    assert any("encerrar a sessao" in l for l in rep["limitations"])
+    assert any("close the agent session" in l for l in rep["limitations"])
     assert json.loads((tmp_path / "run-sim-001" / "agent_call.json").read_text())["session_close_error"]
 
 
@@ -296,7 +296,7 @@ def test_precondition_failure_blocks_without_sending(tmp_path):
     fake = sim.FakeSalesforce()
     fake.cases[sim.CASE].update(IsClosed=True, Status="Closed")  # Case ja encerrado: nao reutilizar
     kw = build(fake, tmp_path)
-    with pytest.raises(RunBlocked, match="precondicoes"):
+    with pytest.raises(RunBlocked, match="preconditions"):
         execute_run(**kw)
     assert fake.action_calls == 0
 
@@ -306,7 +306,7 @@ def test_incomplete_before_snapshot_blocks(tmp_path):
     fake.fail_task_query_after_action = True
     fake.action_calls = 1  # simula falha de leitura ja no snapshot anterior
     kw = build(fake, tmp_path)
-    with pytest.raises(RunBlocked, match="anterior incompleto"):
+    with pytest.raises(RunBlocked, match="incomplete previous snapshot"):
         execute_run(**kw)
     fake.action_calls = 1
 
@@ -368,7 +368,7 @@ def test_changing_bound_case_invalidates_approval(tmp_path):
 def test_missing_before_field_blocks_before_agent_session(tmp_path, field):
     fake = sim.FakeSalesforce(sim.close_ok)
     fake.omit_fields.add(field)
-    with pytest.raises(RunBlocked, match="campos nao coletados"):
+    with pytest.raises(RunBlocked, match="fields not collected"):
         execute_run(**build(fake, tmp_path))
     assert fake.action_calls == 0
     assert not any("einstein" in u for _, u in fake.log)
@@ -387,6 +387,6 @@ def test_invalid_pagination_done_is_collection_failure(tmp_path, done):
                 response.body["done"] = done
         return response
     fake.request = malformed
-    with pytest.raises(RunBlocked, match="anterior incompleto"):
+    with pytest.raises(RunBlocked, match="incomplete previous snapshot"):
         execute_run(**build(fake, tmp_path))
     assert fake.action_calls == 0

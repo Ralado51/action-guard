@@ -109,7 +109,7 @@ def test_case_gone_without_confirmation_is_inconclusive_not_passed_and_not_a_cra
     for cid in ("chk_status_closed", "chk_reason_filled", "chk_owner_unchanged", "chk_no_unexpected"):
         assert status(ctx, cid, after=a) == "inconclusive", cid
     assert oracle.unexpected_changes(plan, b, a) == []
-    assert any("sumiu sem estar em records nem em confirmed_absent" in i
+    assert any("disappeared without being in records or confirmed_absent" in i
                for i in validate_snapshot_pair(plan, b, a))
 
 
@@ -153,7 +153,7 @@ def test_object_missing_from_final_snapshot_is_inconclusive(ctx):
     del a["records"]["Task"]
     assert status(ctx, "chk_followup_task", after=a) == "inconclusive"
     assert status(ctx, "chk_no_unexpected", after=a) == "inconclusive"
-    assert any("Task ausente de records" in i for i in validate_snapshot_pair(plan, b, a))
+    assert any("Task missing from records" in i for i in validate_snapshot_pair(plan, b, a))
 
 
 def test_incomplete_before_snapshot_is_inconclusive(ctx):
@@ -224,7 +224,7 @@ def test_plan_semantics_catches_incoherent_plans(ctx):
 
     p = copy.deepcopy(plan)
     p["checks"].append({**copy.deepcopy(check_of(plan, "chk_no_unexpected")), "check_id": "chk_no_unexpected_2"})
-    assert any("no maximo uma" in i for i in validate_plan_semantics(p))
+    assert any("at most one" in i for i in validate_plan_semantics(p))
 
     p = copy.deepcopy(plan)
     check_of(p, "chk_no_unexpected")["allowed_changes"].append("Case.Inexistente")

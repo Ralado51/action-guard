@@ -37,7 +37,7 @@
   "collection_errors": [
     {
       "object": "Case",
-      "message": "A consulta de Case nao retornou o registro e a ausencia nao pode ser confirmada."
+      "message": "The Case query did not return the record and the absence cannot be confirmed."
     }
   ]
 }

@@ -39,7 +39,7 @@ def main(argv: list[str] | None = None, transport: Transport | None = None) -> i
     ap.add_argument("--fixture-metadata", action="store_true")
     ap.add_argument("--reason", required=True)
     ap.add_argument("--subject", required=True)
-    ap.add_argument("--case-id", help="Case informado pelo operador/backend; omitido = rascunho sem Case")
+    ap.add_argument("--case-id", help="Case given by the operator/backend; omitted = draft without a Case")
     args = ap.parse_args(argv)
     if bool(args.metadata) == args.fixture_metadata:
         print("informe exatamente um entre --metadata e --fixture-metadata", file=sys.stderr)

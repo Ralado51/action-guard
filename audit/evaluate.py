@@ -21,13 +21,13 @@ def classify_checks(plan: dict[str, Any]) -> tuple[list[dict[str, Any]], list[di
     for c in plan["checks"]:
         kind, cid = c["kind"], c["check_id"]
         if kind in ("field_unchanged", "no_unexpected_change"):
-            skipped.append({"check_id": cid, "reason": "Exige o estado anterior; a auditoria so le o estado final."})
+            skipped.append({"check_id": cid, "reason": "Needs the previous state; the audit only reads the final state."})
         elif kind == "field_equals" and reason_value is not None and c.get("expected") == reason_value:
-            skipped.append({"check_id": cid, "reason": "Compara com o valor do plano de teste; na auditoria cada registro tem o seu motivo (use a verificacao de campo preenchido)."})
+            skipped.append({"check_id": cid, "reason": "Compares against the test plan's value; in an audit each record has its own reason (use the field-not-empty check)."})
         elif kind in ("field_equals", "field_not_empty", "record_created"):
             auditable.append(c)
         else:
-            skipped.append({"check_id": cid, "reason": f"Tipo {kind} sem suporte na auditoria."})
+            skipped.append({"check_id": cid, "reason": f"Tipo {kind} is not supported in the audit."})
     return auditable, skipped
 
 
@@ -53,9 +53,9 @@ def evaluate_case(auditable, primary_object, case_id, case_row, linked, linked_e
         if c["kind"] == "record_created":
             obj = c["object"]
             if case_row is None:
-                out.append(_result(c, INCONCLUSIVE, "Registro principal nao encontrado (ou sem acesso)."))
+                out.append(_result(c, INCONCLUSIVE, "Main record not found (or no access)."))
             elif obj in linked_error:
-                out.append(_result(c, INCONCLUSIVE, "Leitura dos registros vinculados falhou."))
+                out.append(_result(c, INCONCLUSIVE, "Reading the linked records failed."))
             else:
                 link, match = c["link_field"], c.get("match", {})
                 rows = [r for r in linked.get(obj, []) if isinstance(r.get(link), str) and key15(r[link]) == key15(case_id)]
@@ -64,11 +64,11 @@ def evaluate_case(auditable, primary_object, case_id, case_row, linked, linked_e
                 other = len(rows) - len(hits) - len(unknown)
                 expected = c.get("expected_count", 1)
                 ev = {"matching": len(hits), "expected": expected, "linked_other": other, "unobserved": len(unknown)}
-                label = f"{len(hits)} registro(s) correspondente(s); esperado {expected}."
+                label = f"{len(hits)} matching record(s); expected {expected}."
                 if len(hits) > expected:
                     out.append(_result(c, FAILED, label, ev))
                 elif unknown:
-                    out.append(_result(c, INCONCLUSIVE, "Registros vinculados sem todos os campos observados.", ev))
+                    out.append(_result(c, INCONCLUSIVE, "Linked records without all the observed fields.", ev))
                 elif len(hits) == expected:
                     out.append(_result(c, PASSED, label, ev))
                 else:
@@ -76,14 +76,14 @@ def evaluate_case(auditable, primary_object, case_id, case_row, linked, linked_e
             continue
         field = c["field"]
         if case_row is None:
-            out.append(_result(c, INCONCLUSIVE, "Registro principal nao encontrado (ou sem acesso)."))
+            out.append(_result(c, INCONCLUSIVE, "Main record not found (or no access)."))
         elif field not in case_row:
-            out.append(_result(c, INCONCLUSIVE, f"Campo {field} nao devolvido pela API."))
+            out.append(_result(c, INCONCLUSIVE, f"Field {field} not returned by the API."))
         else:
             value = case_row[field]
             ok = value == c["expected"] if c["kind"] == "field_equals" else value not in (None, "")
             out.append(_result(c, PASSED if ok else FAILED,
-                               f"{primary_object}.{field}: condicao {'atendida' if ok else 'nao atendida'}.",
+                               f"{primary_object}.{field}: condicao {'atendida' if ok else 'not met'}.",
                                {"observed": value} if not ok else {}))
     return out
 

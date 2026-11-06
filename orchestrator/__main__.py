@@ -44,9 +44,9 @@ def _save_new(path, data):
 def prepare(args, transport):
     meta = _load(args.metadata)
     if meta.get("source") != "salesforce_describe":
-        raise ValueError("Este teste integrado exige metadados Salesforce Describe.")
+        raise ValueError("This integrated test requires Salesforce Describe metadata.")
     if Path(args.output).exists():
-        raise ValueError("Arquivo de saida ja existe; nao sera sobrescrito.")
+        raise ValueError("Output file already exists; it will not be overwritten.")
     result = create_plan(_load(args.rule), meta,
                          {"process": "close_case", "closure_reason": args.reason,
                           "task_subject": args.subject}, transport)
@@ -59,34 +59,34 @@ def prepare(args, transport):
         "model": result.model, "served_model": result.served_model, "usage": result.usage,
         "calls": result.calls, "warnings": result.warnings}})
     print(json.dumps(plan, indent=2, ensure_ascii=False))
-    print("Rascunho salvo sem aprovacao:", args.output)
+    print("Draft saved without approval:", args.output)
 
 
 def run(args, transport, confirm, secret):
     bundle = _load(args.plan)
     plan = copy.deepcopy(bundle["plan"])
     if bundle.get("generation", {}).get("metadata_source") != "salesforce_describe":
-        raise ValueError("Origem dos metadados deve ser salesforce_describe.")
+        raise ValueError("Metadata source must be salesforce_describe.")
     issues = ready_for_approval(plan)
     if issues or plan.get("plan_hash") != compute_plan_hash(plan):
-        raise ValueError("Plano invalido ou hash alterado; gere novo rascunho antes de aprovar.")
+        raise ValueError("Invalid plan or changed hash; generate a new draft before approving.")
     plan["approval"] = None
     print(json.dumps(plan, indent=2, ensure_ascii=False))
-    expected = "APROVAR " + plan["plan_hash"]
-    print("Esta acao fecha o Case e cria uma Task. Confira tambem o escopo monitored.")
+    expected = "APPROVE " + plan["plan_hash"]
+    print("This action closes the Case and creates a Task. Also review the monitored scope.")
     coverage = plan.get("rule_coverage") or []
-    label = {"covered": "COBERTA", "not_verifiable": "NAO VERIFICADA", "conflicts_with_policy": "CONFLITA COM O PLANO"}
+    label = {"covered": "COVERED", "not_verifiable": "NOT VERIFIED", "conflicts_with_policy": "CONFLICTS WITH THE PLAN"}
     if coverage:
-        print("\nCobertura da regra (proposta do modelo, conferida pelo servidor):")
+        print("\nRule coverage (model proposal, checked by the server):")
         for item in coverage:
             print(f"  [{label[item['status']]}] {item['clause_id']}: {item['text']}  -> {', '.join(item['check_ids']) or '-'}")
-    if confirm("Digite " + expected + ": ").strip() != expected:
-        print("Cancelado. Nenhuma chamada ao Salesforce.")
+    if confirm("Type " + expected + ": ").strip() != expected:
+        print("Cancelled. No call was made to Salesforce.")
         return 0
     if any(i["status"] != "covered" for i in coverage):
-        print("ATENCAO: ha clausulas da regra que este plano NAO verifica. Um 'passed' vale so para as verificacoes listadas.")
-        if confirm("Digite ACEITAR COBERTURA PARCIAL para continuar: ").strip() != "ACEITAR COBERTURA PARCIAL":
-            print("Cancelado. Nenhuma chamada ao Salesforce.")
+        print("WARNING: some clauses of the rule are NOT verified by this plan. A 'passed' only applies to the listed checks.")
+        if confirm("Type ACCEPT PARTIAL COVERAGE to continue: ").strip() != "ACCEPT PARTIAL COVERAGE":
+            print("Cancelled. No call was made to Salesforce.")
             return 0
     plan["approval"] = {"approved_by": args.approved_by, "approved_at": utc_now(),
                         "approved_plan_hash": plan["plan_hash"]}
@@ -124,14 +124,14 @@ def run(args, transport, confirm, secret):
 def main(argv=None, *, transport=None, confirm=None, secret=None):
     ap = argparse.ArgumentParser(prog="python -m orchestrator")
     sub = ap.add_subparsers(dest="command", required=True)
-    p = sub.add_parser("prepare", help="Gera plano pela Vultr; nao chama Salesforce.")
+    p = sub.add_parser("prepare", help="Generates a plan with Vultr; does not call Salesforce.")
     p.add_argument("--rule", required=True)
     p.add_argument("--metadata", required=True)
     p.add_argument("--case-id", required=True)
     p.add_argument("--reason", required=True)
     p.add_argument("--subject", required=True)
     p.add_argument("--output", required=True)
-    r = sub.add_parser("run", help="Revisa, aprova hash e executa uma tentativa.")
+    r = sub.add_parser("run", help="Reviews, approves the hash and runs one attempt.")
     r.add_argument("--plan", required=True)
     r.add_argument("--approved-by", required=True)
     r.add_argument("--runs-dir", default="runs")
@@ -143,13 +143,13 @@ def main(argv=None, *, transport=None, confirm=None, secret=None):
             return 0
         return run(args, http, confirm or input, secret or getpass.getpass)
     except FileExistsError:
-        print("Arquivo ou tentativa ja existe. Nao repetir; reconciliar evidencias antes de nova tentativa.")
+        print("File or attempt already exists. Do not repeat; reconcile the evidence before a new attempt.")
         return 1
     except PlannerError as error:
         print(json.dumps(error.to_public(), ensure_ascii=False))
         return 1
     except (ValueError, KeyError, TypeError, OSError, AuthError, ConfigError, RunBlocked):
-        print("Operacao interrompida. Confira configuracao, plano e evidencias; nao repita uma execucao automaticamente.")
+        print("Operation interrupted. Check the configuration, plan and evidence; do not repeat a run automatically.")
         return 1
 
 

@@ -44,7 +44,7 @@ class UrllibTransport:
             raise TransportError("timeout", timed_out=True) from e
         except urllib.error.URLError as e:
             timed = isinstance(e.reason, (socket.timeout, TimeoutError))
-            raise TransportError(f"falha de rede: {type(e.reason).__name__}", timed_out=timed) from e
+            raise TransportError(f"network failure: {type(e.reason).__name__}", timed_out=timed) from e
 
 
 def _decode(raw: bytes) -> Any:

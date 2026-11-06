@@ -56,12 +56,12 @@ def _insufficient(*details: str) -> PlannerError:
 
 def parse_metadata(raw: Any) -> MetadataContext:
     if not isinstance(raw, dict):
-        raise _insufficient("metadata_context ausente ou nao e objeto")
+        raise _insufficient("metadata_context missing or not an object")
     source, collected = raw.get("source"), raw.get("collected_at")
     if source not in SOURCES:
-        raise _insufficient(f"metadata_context.source deve ser um de {list(SOURCES)}")
+        raise _insufficient(f"metadata_context.source must be one of {list(SOURCES)}")
     if not isinstance(collected, str) or not collected:
-        raise _insufficient("metadata_context.collected_at ausente")
+        raise _insufficient("metadata_context.collected_at missing")
     objs: dict[str, dict[str, FieldInfo]] = {}
     for oname, o in (raw.get("objects") or {}).items():
         if not isinstance(o, dict) or o.get("readable") is not True or not IDENT.match(str(oname)):
@@ -77,26 +77,26 @@ def parse_metadata(raw: Any) -> MetadataContext:
 
 def parse_action(raw: Any) -> ActionContext:
     if not isinstance(raw, dict):
-        raise _insufficient("action_context ausente ou nao e objeto")
+        raise _insufficient("action_context missing or not an object")
     if raw.get("process") != "close_case":
-        raise _insufficient("processo suportado neste MVP: close_case")
+        raise _insufficient("process supported in this MVP: close_case")
     reason = raw.get("closure_reason")
     if not isinstance(reason, str) or not reason.strip():
-        raise _insufficient("closure_reason ausente; informe um dos valores: " + "; ".join(KNOWN_REASONS))
+        raise _insufficient("closure_reason missing; give one of the values: " + "; ".join(KNOWN_REASONS))
     if reason not in KNOWN_REASONS:
-        raise _insufficient(f"closure_reason {reason[:60]!r} nao e um dos valores conhecidos: " + "; ".join(KNOWN_REASONS))
+        raise _insufficient(f"closure_reason {reason[:60]!r} is not one of the known values: " + "; ".join(KNOWN_REASONS))
     subject = raw.get("task_subject")
     if not isinstance(subject, str) or not subject.strip() or len(subject) > 255 or subject != subject.strip():
-        raise _insufficient("task_subject ausente, com espacos nas pontas ou maior que 255 caracteres")
+        raise _insufficient("task_subject missing, with leading/trailing spaces, or longer than 255 characters")
     case_id = raw.get("case_id")
     if case_id is not None:
         try:
             case_id = to_sfid18(case_id)
         except InvalidSalesforceId:
-            raise _insufficient("case_id invalido (15 ou 18 caracteres); ele vem do backend/operador, nunca do modelo") from None
+            raise _insufficient("invalid case_id (15 or 18 characters); it comes from the backend/operator, never from the model") from None
     agent = raw.get("agent_name", "Action Guard")
     if not isinstance(agent, str) or not agent.strip() or len(agent) > 80:
-        raise _insufficient("agent_name invalido")
+        raise _insufficient("invalid agent_name")
     return ActionContext("close_case", reason, subject, agent, case_id)
 
 
@@ -104,19 +104,19 @@ def check_sufficiency(meta: MetadataContext, action: ActionContext) -> None:
     problems = []
     for obj, names in REQUIRED_MONITORED.items():
         if obj not in meta.objects:
-            problems.append(f"objeto {obj} ausente ou nao legivel no contexto")
+            problems.append(f"object {obj} missing or not readable in the context")
             continue
         for n in names:
             info = meta.field(obj, n)
             if info is None:
-                problems.append(f"campo {obj}.{n} ausente do contexto")
+                problems.append(f"field {obj}.{n} missing from the context")
             elif not info.readable:
-                problems.append(f"campo {obj}.{n} nao e legivel")
+                problems.append(f"field {obj}.{n} is not readable")
     status = meta.field("Case", "Status")
     if status and "Closed" not in status.values:
-        problems.append("Case.Status sem o valor Closed no contexto")
+        problems.append("Case.Status without the Closed value in the context")
     reason = meta.field("Case", "Closure_Reason__c")
     if reason and action.closure_reason not in reason.values:
-        problems.append(f"Closure_Reason__c nao oferece {action.closure_reason!r} no contexto")
+        problems.append(f"Closure_Reason__c does not offer {action.closure_reason!r} no contexto")
     if problems:
         raise _insufficient(*problems)

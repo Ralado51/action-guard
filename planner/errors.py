@@ -8,15 +8,15 @@ from __future__ import annotations
 from typing import Any
 
 CATEGORIES = {
-    "config": "Configuracao do planner ausente ou invalida.",
+    "config": "Planner configuration missing or invalid.",
     "auth": "A Vultr recusou as credenciais (401/403). Verifique a chave no ambiente do servidor.",
-    "timeout": "A inferencia nao respondeu a tempo.",
-    "rate_limit": "A inferencia limitou as requisicoes (429) e o orcamento de tentativas acabou.",
-    "upstream": "A inferencia falhou (erro HTTP ou de rede).",
-    "invalid_response": "A resposta do modelo veio vazia, truncada ou fora do formato esperado.",
-    "schema": "O plano proposto nao respeita o schema de test_plan.",
-    "semantics": "O plano proposto viola regras de coerencia, metadados ou invariantes do MVP.",
-    "insufficient_context": "O contexto de metadados ou da acao e insuficiente para gerar o plano.",
+    "timeout": "The inference did not respond in time.",
+    "rate_limit": "Inference rate-limited the requests (429) and the retry budget ran out.",
+    "upstream": "The inference failed (HTTP or network error).",
+    "invalid_response": "The model response was empty, truncated or in an unexpected format.",
+    "schema": "The proposed plan does not conform to the test_plan schema.",
+    "semantics": "The proposed plan violates consistency rules, metadata or MVP invariants.",
+    "insufficient_context": "The metadata or action context is insufficient to generate the plan.",
 }
 
 

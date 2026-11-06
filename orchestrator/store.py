@@ -10,7 +10,7 @@ from typing import Any
 class EvidenceStore:
     def __init__(self, base_dir: str | Path, run_id: str):
         if "/" in run_id or ".." in run_id:
-            raise ValueError("run_id invalido")
+            raise ValueError("invalid run_id")
         self.dir = Path(base_dir) / run_id
         self.dir.mkdir(parents=True, exist_ok=True)
 

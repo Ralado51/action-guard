@@ -22,13 +22,13 @@ def utc_now() -> str:
 
 def _ident(value: str) -> str:
     if not _IDENT.match(value):
-        raise ValueError(f"identificador invalido para SOQL: {value!r}")
+        raise ValueError(f"invalid identifier for SOQL: {value!r}")
     return value
 
 
 def _sfid(value: str) -> str:
     if not _SFID.match(value):
-        raise ValueError(f"Id Salesforce invalido: {value!r}")
+        raise ValueError(f"invalid Salesforce Id: {value!r}")
     return value
 
 
@@ -52,7 +52,7 @@ def collect_snapshot(rest: SalesforceRest, plan: dict[str, Any], run_id: str, ph
     for mon in plan["monitored"]["objects"]:
         obj = mon["object"]
         if obj not in scopes:
-            errors.append({"object": obj, "message": "sem escopo de consulta definido (nenhum registro principal ou link_field)"})
+            errors.append({"object": obj, "message": "no query scope defined (no main record or link_field)"})
             continue
         flt, rid = scopes[obj]
         fields = list(mon["fields"])
@@ -74,15 +74,15 @@ def collect_snapshot(rest: SalesforceRest, plan: dict[str, Any], run_id: str, ph
             try:
                 found = rest.query(f"SELECT Id, IsDeleted FROM {_ident(obj)} WHERE Id IN ({ids})", include_deleted=True)
             except QueryError as e:
-                errors.append({"object": obj, "message": f"ausencia nao confirmada: {e}"})
+                errors.append({"object": obj, "message": f"absence not confirmed: {e}"})
                 del records[obj]
                 continue
             deleted = {r["Id"] for r in found if r.get("IsDeleted") is True}
             for i in missing:
                 if i in deleted:
-                    absent.append({"object": obj, "id": i, "basis": "queryAll com IsDeleted = true retornou o registro"})
+                    absent.append({"object": obj, "id": i, "basis": "queryAll with IsDeleted = true returned the record"})
             if set(missing) - deleted:
-                errors.append({"object": obj, "message": "registro sumiu e a exclusao nao foi confirmada por queryAll"})
+                errors.append({"object": obj, "message": "record disappeared and the deletion was not confirmed by queryAll"})
                 del records[obj]
                 absent = [a for a in absent if a["object"] != obj]
 

@@ -43,24 +43,24 @@ def create_synthetic_case(rest: SalesforceRest) -> str:
 
 def _gates(plan: dict[str, Any], case_id: str) -> str:
     if not approval_is_valid(plan):
-        raise RunBlocked("plano sem aprovacao valida (ausente, ou alterado depois de aprovado)")
+        raise RunBlocked("plan without a valid approval (missing, or changed after approval)")
     issues = validate_plan_semantics(plan)
     if issues:
-        raise RunBlocked("plano incoerente: " + "; ".join(issues))
+        raise RunBlocked("inconsistent plan: " + "; ".join(issues))
     action = plan["action"]
     if action["executed_via"] != "agentforce_agent_api":
-        raise RunBlocked("este orquestrador executa somente agentforce_agent_api")
+        raise RunBlocked("this orchestrator only runs agentforce_agent_api")
     reason = (action.get("input") or {}).get("closure_reason")
     if not isinstance(reason, str) or not reason.strip():
-        raise RunBlocked("action.input.closure_reason ausente ou vazio")
+        raise RunBlocked("action.input.closure_reason missing or empty")
     bound = (action.get("input") or {}).get("case_id")
     if not isinstance(bound, str) or not bound.strip():
-        raise RunBlocked("action.input.case_id obrigatorio antes da aprovacao")
+        raise RunBlocked("action.input.case_id is required before approval")
     try:
         if not same_record(bound, case_id):
-            raise RunBlocked("o Case informado difere do Case aprovado no plano")
+            raise RunBlocked("the given Case differs from the Case approved in the plan")
     except InvalidSalesforceId:
-        raise RunBlocked("Id de Case invalido") from None
+        raise RunBlocked("Invalid Case Id") from None
     return reason
 
 
@@ -72,9 +72,9 @@ def _preconditions_ok(plan: dict[str, Any], before: dict[str, Any]) -> list[str]
         if "object" not in pre:
             continue
         if pre["object"] != prim["object"] or rec is None or pre["field"] not in rec["fields"]:
-            problems.append(f"{pre['id']}: nao verificavel no snapshot anterior")
+            problems.append(f"{pre['id']}: not verifiable in the previous snapshot")
         elif rec["fields"][pre["field"]] != pre["expected"]:
-            problems.append(f"{pre['id']}: esperado {pre['expected']!r}, observado {rec['fields'][pre['field']]!r}")
+            problems.append(f"{pre['id']}: expected {pre['expected']!r}, observed {rec['fields'][pre['field']]!r}")
     return problems
 
 
@@ -89,18 +89,18 @@ def execute_run(plan: dict[str, Any], *, case_id: str, run_id: str, rest: Salesf
     before = collect_snapshot(rest, plan, run_id, "before", primary, now=now)
     store.save("before", before)
     if not before["complete"]:
-        raise RunBlocked("snapshot anterior incompleto: " + "; ".join(e["message"] for e in before.get("collection_errors", [])))
+        raise RunBlocked("incomplete previous snapshot: " + "; ".join(e["message"] for e in before.get("collection_errors", [])))
     missing = [f"{mon['object']}.{field} em {rec['id']}"
                for mon in plan["monitored"]["objects"]
                for rec in before["records"].get(mon["object"], [])
                for field in mon["fields"] if field not in rec["fields"]]
     if missing:
-        raise RunBlocked("snapshot anterior com campos nao coletados: " + "; ".join(missing))
+        raise RunBlocked("previous snapshot with fields not collected: " + "; ".join(missing))
     if not any(same_record(r["id"], case_id) for r in before["records"].get("Case", [])):
-        raise RunBlocked("Case aprovado ausente do snapshot anterior")
+        raise RunBlocked("Approved Case missing from the previous snapshot")
     problems = _preconditions_ok(plan, before)
     if problems:
-        raise RunBlocked("precondicoes nao satisfeitas: " + "; ".join(problems))
+        raise RunBlocked("preconditions not satisfied: " + "; ".join(problems))
 
     text = build_request_text(case_id, reason)
     store.save("agent_request", {"run_id": run_id, "text": text, "saved_before_sending": True, "at": now()})
@@ -120,27 +120,27 @@ def execute_run(plan: dict[str, Any], *, case_id: str, run_id: str, rest: Salesf
     store.save("after", after)
 
     limitations = [
-        "no_unexpected_change cobre somente os registros e campos monitorados pelo plano; nao observa outros objetos nem Tasks nao vinculadas ao Case.",
-        "A contagem de Tasks conta apenas as novas que atendem ao vinculo e ao Subject esperados; outras Tasks novas vinculadas ao Case sao avisadas, mas nao alteram o status.",
-        "A coleta posterior para assim que todas as verificacoes passam; efeitos tardios depois desse instante nao sao vistos.",
-        "A acao foi disparada pelo Agent API do Agentforce; a resposta do agente e narrativa e nao substitui a evidencia dos registros.",
-        "Sem garantia de execucao exatamente uma vez: uma chamada unica do cliente reduz, mas nao elimina, repeticao.",
+        "no_unexpected_change covers only the records and fields monitored by the plan; it does not observe other objects or Tasks not linked to the Case.",
+        "The Task count only counts new Tasks that match the expected link and Subject; other new Tasks linked to the Case are flagged but do not change the status.",
+        "The after-collection stops as soon as all checks pass; late effects after that moment are not seen.",
+        "The action was triggered through the Agentforce Agent API; the agent's response is narrative and does not replace the evidence in the records.",
+        "No exactly-once guarantee: a single client call reduces, but does not eliminate, repetition.",
     ]
     limitations += [f"snapshot: {i}" for i in validate_snapshot_pair(plan, before, after)]
     if call.outcome == UNCERTAIN:
-        limitations.append("Resultado da chamada ao agente incerto (timeout ou erro apos o envio): reconciliar por evidencia e revisao humana antes de qualquer nova tentativa.")
+        limitations.append("The agent call result is uncertain (timeout or error after sending): reconcile using evidence and human review before any new attempt.")
     if call.outcome == REJECTED and call.session_id is None:
-        limitations.append(f"A chamada ao agente nao chegou a executar (a sessao nao abriu e nenhum pedido foi enviado): {call.error}")
+        limitations.append(f"The agent call did not execute (the session did not open and no request was sent): {call.error}")
     elif call.outcome == REJECTED:
-        limitations.append(f"O pedido foi recusado pelo Agent API ({call.error}). Isso nao prova que nada foi executado: valem os registros coletados.")
+        limitations.append(f"The request was refused by the Agent API ({call.error}). This does not prove that nothing was executed: the collected records apply.")
     for r in results:
         ids = (r.get("evidence", {}).get("after") or {}).get("linked_unmatched_ids") if isinstance(r.get("evidence", {}).get("after"), dict) else None
         if ids:
-            limitations.append(f"AVISO {r['check_id']}: {len(ids)} Task(s) nova(s) vinculada(s) ao Case nao correspondem ao Subject esperado ({', '.join(ids)}). O status das verificacoes nao muda; revise manualmente.")
+            limitations.append(f"WARNING {r['check_id']}: {len(ids)} new Task(s) linked to the Case do not match the expected Subject ({', '.join(ids)}). The status of the checks does not change; review manually.")
     if call.session_close_error:
-        limitations.append(f"Falha ao encerrar a sessao do agente (nao altera o resultado): {call.session_close_error}")
+        limitations.append(f"Failed to close the agent session (does not change the result): {call.session_close_error}")
     if not after["complete"]:
-        limitations.append("Snapshot posterior incompleto: verificacoes dependentes ficam inconclusivas.")
+        limitations.append("Incomplete after-snapshot: dependent checks are inconclusive.")
 
     coverage = copy.deepcopy(plan.get("rule_coverage"))
     if coverage is None:
@@ -150,10 +150,10 @@ def execute_run(plan: dict[str, Any], *, case_id: str, run_id: str, rest: Salesf
     else:
         coverage_status = "partial" if coverage else "not_assessed"
     if coverage_status == "partial":
-        gaps = [f"{i['clause_id']} ({'conflito' if i['status'] == 'conflicts_with_policy' else 'nao verificada'})"
+        gaps = [f"{i['clause_id']} ({'conflict' if i['status'] == 'conflicts_with_policy' else 'not verified'})"
                 for i in coverage if i["status"] != "covered"]
-        limitations.insert(0, f"COBERTURA PARCIAL: {len(gaps)} de {len(coverage)} clausulas da regra NAO sao verificadas por este plano: "
-                              + ", ".join(gaps) + ". Um resultado 'passed' vale somente para as verificacoes listadas.")
+        limitations.insert(0, f"PARTIAL COVERAGE: {len(gaps)} of {len(coverage)} clauses of the rule are NOT verified by this plan: "
+                              + ", ".join(gaps) + ". A 'passed' result only applies to the listed checks.")
     statuses = {r["status"] for r in results}
     status = "failed" if "failed" in statuses else "inconclusive" if "inconclusive" in statuses else "passed"
     report = {

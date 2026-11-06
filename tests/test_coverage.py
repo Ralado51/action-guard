@@ -44,10 +44,10 @@ def test_segmentation_handles_empty_and_noise():
 
 # ---- travas do servidor ----
 @pytest.mark.parametrize("model_item,why", [
-    ({"status": "covered", "check_ids": ["chk_inexistente"], "reason": "x"}, "inexistentes"),
-    ({"status": "covered", "check_ids": [], "reason": "x"}, "inexistentes"),
-    ({"status": "covered", "check_ids": "chk_owner_unchanged", "reason": "x"}, "inexistentes"),
-    ({"status": "covered", "check_ids": ["chk_status_closed"], "reason": "x"}, "vocabulario"),   # clausula sobre proprietario
+    ({"status": "covered", "check_ids": ["chk_inexistente"], "reason": "x"}, "do not exist"),
+    ({"status": "covered", "check_ids": [], "reason": "x"}, "do not exist"),
+    ({"status": "covered", "check_ids": "chk_owner_unchanged", "reason": "x"}, "do not exist"),
+    ({"status": "covered", "check_ids": ["chk_status_closed"], "reason": "x"}, "vocabulary"),   # clausula sobre proprietario
 ])
 def test_covered_is_downgraded_when_mapping_is_unsound(model_item, why):
     item, _ = one("Preserve o proprietário", model_item)
@@ -93,7 +93,7 @@ def test_duplicates_first_wins_and_unknown_status_is_not_verifiable():
     items, w = cov.finalize(clauses, [
         {"clause_id": "cl_01", "status": "not_verifiable", "check_ids": [], "reason": "a"},
         {"clause_id": "cl_01", "status": "covered", "check_ids": ["chk_status_closed"], "reason": "b"}], CHECKS)
-    assert items[0]["status"] == cov.NOT_VERIFIABLE and any("duplicado" in x for x in w)
+    assert items[0]["status"] == cov.NOT_VERIFIABLE and any("duplicated" in x for x in w)
     items, _ = cov.finalize(clauses, [{"clause_id": "cl_01", "status": "mais-ou-menos", "check_ids": ["chk_status_closed"]}], CHECKS)
     assert items[0]["status"] == cov.NOT_VERIFIABLE
 
@@ -112,7 +112,7 @@ def test_extra_check_gets_field_topic():
 # ---- conjunto rotulado ----
 def test_labeled_set_oracle_model_matches_every_label():
     r = ev.evaluate(DATA, lambda rid, cl, ex: ev.simulated_model("oracle", cl, ex))
-    assert r["counts"] == {"ok": 33, "false_covered": 0, "false_uncovered": 0, "conflict_missed": 0}, [x for x in r["rows"] if x["result"] != "ok"]
+    assert r["counts"] == {"ok": 50, "false_covered": 0, "false_uncovered": 0, "conflict_missed": 0}, [x for x in r["rows"] if x["result"] != "ok"]
 
 
 def test_labeled_set_worst_case_model_only_fails_on_documented_gaps():
@@ -171,17 +171,17 @@ def test_missing_coverage_key_does_not_fail_but_marks_everything_not_verifiable(
 def test_coverage_does_not_consume_extra_model_calls():
     fake = FakeVultr(reply(with_cov(rule()["text_pt"])))
     assert plan_with(fake).calls == 1 and len(fake.requests) == 1
-    assert "clausulas" in fake.requests[0][3]["messages"][1]["content"]
+    assert "clauses" in fake.requests[0][3]["messages"][1]["content"]
 
 
 def test_semantics_reject_coverage_pointing_to_missing_checks():
     plan = plan_with(FakeVultr(reply(with_cov(rule()["text_pt"])))).plan
     bad = copy.deepcopy(plan)
     bad["rule_coverage"][0]["check_ids"] = ["chk_nao_existe"]
-    assert any("nao existe" in i for i in validate_plan_semantics(bad))
+    assert any("does not exist" in i for i in validate_plan_semantics(bad))
     bad = copy.deepcopy(plan)
     bad["rule_coverage"][0].update(status="covered", check_ids=[])
-    assert any("covered exige" in i for i in validate_plan_semantics(bad))
+    assert any("covered requires" in i for i in validate_plan_semantics(bad))
 
 
 # ---- relatorio ----
@@ -201,7 +201,7 @@ def test_report_is_partial_and_says_so_even_when_all_checks_pass(tmp_path, valid
     plan = approved_with([item(1, "covered", ["chk_status_closed"]), item(2, "not_verifiable", [])])
     _, rep = run(sim.close_ok, tmp_path, plan=plan)
     assert rep["status"] == "passed" and rep["coverage_status"] == "partial"
-    assert rep["limitations"][0].startswith("COBERTURA PARCIAL") and "cl_02" in rep["limitations"][0]
+    assert rep["limitations"][0].startswith("PARTIAL COVERAGE") and "cl_02" in rep["limitations"][0]
     assert rep["rule_coverage"] == plan["rule_coverage"]
     assert not list(validator("report").iter_errors(rep))
 
@@ -217,7 +217,7 @@ def test_report_complete_and_not_assessed(tmp_path, validator):
 
 def test_conflict_clause_makes_report_partial(tmp_path):
     _, rep = run(sim.close_ok, tmp_path, plan=approved_with([item(1, "conflicts_with_policy", ["chk_followup_task"])]))
-    assert rep["coverage_status"] == "partial" and "conflito" in rep["limitations"][0]
+    assert rep["coverage_status"] == "partial" and "conflict" in rep["limitations"][0]
 
 
 # ---- CLI ----
@@ -235,13 +235,13 @@ def test_cli_requires_second_confirmation_for_partial_coverage(tmp_path, monkeyp
 
     def only_hash(prompt):
         prompts.append(prompt)
-        return prompt.split("Digite ", 1)[1].removesuffix(": ") if "APROVAR" in prompt else "nao"
+        return prompt.split("Type ", 1)[1].removesuffix(": ") if "APPROVE" in prompt else "nao"
     fake = sim.FakeSalesforce()
     assert cli.main(args(path, tmp_path), transport=fake, confirm=only_hash) == 0
-    assert fake.log == [] and any("ACEITAR COBERTURA PARCIAL" in p for p in prompts)       # recusou a 2a confirmacao: nada foi enviado
+    assert fake.log == [] and any("ACCEPT PARTIAL COVERAGE" in p for p in prompts)       # recusou a 2a confirmacao: nada foi enviado
 
     def both(prompt):
-        return "ACEITAR COBERTURA PARCIAL" if "ACEITAR" in prompt else prompt.split("Digite ", 1)[1].removesuffix(": ")
+        return "ACCEPT PARTIAL COVERAGE" if "ACCEPT" in prompt else prompt.split("Type ", 1)[1].removesuffix(": ")
     fake = sim.FakeSalesforce()
     assert cli.main(args(path, tmp_path), transport=fake, confirm=both) == 0 and fake.action_calls == 1
     approved = json.loads(next((tmp_path / "runs").glob("integrated-*/approved_plan.json")).read_text())

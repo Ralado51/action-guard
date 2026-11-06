@@ -65,7 +65,7 @@ def _created(check, before, after, rid):
     obj, link = check["object"], check["link_field"]
     old, new = _index(before, obj), _index(after, obj)
     if old is None or new is None:
-        return "inconclusive", "Colecao nao observada integralmente.", [], {}
+        return "inconclusive", "Collection not fully observed.", [], {}
     matches, unknown, unmatched = [], [], []
     criteria = {link: rid, **check.get("match", {})}
     # The link must always target the primary record, even with a conflicting match.
@@ -86,7 +86,7 @@ def _created(check, before, after, rid):
               else "passed" if len(matches) == expected else "failed")
     detail = {"matching_ids": matches, "unobserved_candidate_ids": unknown,
               "linked_unmatched_ids": unmatched, "expected_count": expected, "criteria": criteria}
-    return status, f"{len(matches)} novos correspondentes; esperado {expected}; {len(unknown)} candidatos incertos.", matches + unknown, detail
+    return status, f"{len(matches)} new matching; expected {expected}; {len(unknown)} uncertain candidates.", matches + unknown, detail
 
 
 def evaluate(plan: dict[str, Any], before: dict[str, Any], after: dict[str, Any]):
@@ -97,7 +97,7 @@ def evaluate(plan: dict[str, Any], before: dict[str, Any], after: dict[str, Any]
     """
     issues = validate_plan_semantics(plan)
     if issues:
-        raise ValueError("Plano incoerente: " + "; ".join(issues))
+        raise ValueError("Inconsistent plan: " + "; ".join(issues))
     incompatible = (before["run_id"] != after["run_id"] or before["phase"] != "before"
                     or after["phase"] != "after" or before["primary_record"] != after["primary_record"])
     primary = before["primary_record"]
@@ -109,9 +109,9 @@ def evaluate(plan: dict[str, Any], before: dict[str, Any], after: dict[str, Any]
     for check in plan["checks"]:
         kind = check["kind"]
         evidence = {"record_ids": [rid], "fields": [check.get("field", "*")]}
-        status, reason = "inconclusive", "Evidencia insuficiente para comparar."
+        status, reason = "inconclusive", "Insufficient evidence to compare."
         if incompatible:
-            reason = "Identidades ou fases dos snapshots incompativeis."
+            reason = "Snapshot identities or phases are incompatible."
         elif kind == "no_unexpected_change":
             status = "failed" if changes else "inconclusive" if unobserved else "passed"
             reason = f"{len(changes)} mudancas inesperadas comprovadas; evidencia incompleta={unobserved}."
@@ -124,7 +124,7 @@ def evaluate(plan: dict[str, Any], before: dict[str, Any], after: dict[str, Any]
                         "after": detail}
         elif kind in ("field_equals", "field_not_empty", "field_unchanged"):
             if check["object"] != obj:
-                raise ValueError("Verificacao de campo deve mirar o registro principal.")
+                raise ValueError("A field check must target the main record.")
             field = check["field"]
             bs, bf = _read(before, obj, rid)
             state, af = _read(after, obj, rid)
@@ -136,15 +136,15 @@ def evaluate(plan: dict[str, Any], before: dict[str, Any], after: dict[str, Any]
             if kind == "field_unchanged" and not initial_known:
                 pass
             elif state == "deleted":
-                status, reason = "failed", "Exclusao do registro confirmada."
+                status, reason = "failed", "Record deletion confirmed."
             elif state == "present" and field in af:
                 value = af[field]
                 ok = (value == check["expected"] if kind == "field_equals" else
                       value == bf[field] if kind == "field_unchanged" else value not in (None, ""))
                 status = "passed" if ok else "failed"
-                reason = f"{obj}.{field}: condicao {'atendida' if ok else 'nao atendida'} nos dados coletados."
+                reason = f"{obj}.{field}: condicao {'atendida' if ok else 'not met'} nos dados coletados."
         else:
-            raise ValueError(f"Verificacao desconhecida: {kind}")
+            raise ValueError(f"Unknown check: {kind}")
         results.append(dict(schema_version="1.0", run_id=before["run_id"], check_id=check["check_id"],
                             kind=kind, status=status, reason=reason, evidence=evidence))
     return results, copy.deepcopy(changes)
