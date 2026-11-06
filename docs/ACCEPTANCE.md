@@ -14,3 +14,6 @@ Guards added after review: a report row is trusted only if its status follows fr
 Completeness: when a finding opens, the checks the policy observes are recorded in the event (`expected_checks`); a revalidation report must carry exactly that set for the Case, with no missing, duplicated or unknown check. Findings opened before this guard cannot be revalidated. The report totals and per-check summary are not cross-checked, and the plan itself is not re-evaluated here: this layer trusts a report that carries the right plan hash and internally consistent rows.
 
 Delivery limits: findings are managed through the CLI (the web tab shows the recorded flow; there is no API to assign, fix or close). The recorded cycle proves the Case was regularised, not that the agent's behaviour was corrected in a new run.
+
+## Guided walkthrough
+The landing view ("Understand in 60 seconds") tells the story of one Case from the recorded data: agreement, claim, check, decision, fix and new audit. It keeps two origins apart: the real agent run (the agent's own report) and the controlled detection test (a fault injected by us, no agent involved). It uses `recorded_flow.json` and `recorded_run.json`; nothing runs live.
