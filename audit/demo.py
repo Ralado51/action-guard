@@ -10,6 +10,7 @@ from typing import Any
 
 from connector.ids import to_sfid18
 
+from .present import check_view
 from .evaluate import CORRECT, FAILED, INCONCLUSIVE, INCORRECT, case_status, classify_checks, evaluate_case
 
 SUBJECT = "Action Guard - Case closure follow-up"
@@ -45,29 +46,6 @@ SUBJECTS = [
 _PLAN = ([("ok", 1)] * 13 + [("empty", 1)] * 3 + [("ok", 0)] * 2 + [("ok", 2)] + [("missing", 0)])
 
 
-def _expected_found(check: dict[str, Any], result: dict[str, Any], row: dict[str, Any] | None) -> tuple[str, str]:
-    kind, ev = check["kind"], result["evidence"]
-    if result["status"] == INCONCLUSIVE:
-        return _expect(check), "Could not be read"
-    if kind == "record_created":
-        n = ev.get("matching", 0)
-        return _expect(check), f"{n} follow-up Task" + ("" if n == 1 else "s")
-    if kind == "field_not_empty":
-        v = (row or {}).get(check["field"])
-        return _expect(check), "Empty" if v in (None, "") else str(v)
-    observed = ev.get("observed", check["expected"]) if result["status"] == FAILED else check["expected"]
-    return _expect(check), "Empty" if observed in (None, "") else str(observed)
-
-
-def _expect(check: dict[str, Any]) -> str:
-    if check["kind"] == "record_created":
-        n = check.get("expected_count", 1)
-        return f"{n} follow-up Task" + ("" if n == 1 else "s")
-    if check["kind"] == "field_not_empty":
-        return "A value is recorded"
-    return str(check["expected"])
-
-
 def _finding(status: str, results: list[dict[str, Any]]) -> str:
     failed = {r["check_id"]: r for r in results if r["status"] == FAILED}
     if status == CORRECT:
@@ -100,12 +78,8 @@ def build_demo() -> dict[str, Any]:
             by_check[r["check_id"]][r["status"]] += 1
         status = case_status(results)
         claim = "Case closed" + (f" with reason “{reason}”" if reason else "") + ". Follow-up task created."
-        views = []
-        by_id = {c["check_id"]: c for c in auditable}
-        for r in results:
-            exp, found = _expected_found(by_id[r["check_id"]], r, row)
-            views.append({"check_id": r["check_id"], "description": by_id[r["check_id"]]["description"],
-                          "status": r["status"], "expected": exp, "found": found})
+        by_id = {c['check_id']: c for c in auditable}
+        views = [check_view(by_id[r['check_id']], r, row) for r in results]
         cases.append({"case_id": cid, "subject": SUBJECTS[i - 1], "status": status, "finding": _finding(status, results),
                       "agent_claim": claim, "checks": views})
         tasks_by_case[cid] = n_tasks
@@ -115,6 +89,7 @@ def build_demo() -> dict[str, Any]:
         "synthetic": True,
         "label": "Synthetic demonstration: 20 invented Cases, no Salesforce connection, no real customer data.",
         "engine": "audit.evaluate, the same deterministic engine used on real Cases.",
+        "basis": {"plan_version": 1, "plan_hash": None, "generated_at": None, "selection": "Agent-reported list (20 synthetic Cases)", "note": "Demonstration plan, not hash-approved."},
         "agent_reported": n,
         "totals": {"evaluated": n, "correct": totals[CORRECT], "incorrect": totals[INCORRECT], "inconclusive": totals[INCONCLUSIVE]},
         "outcome_rate": round(totals[CORRECT] / n, 4),

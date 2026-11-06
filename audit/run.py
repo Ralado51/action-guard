@@ -12,6 +12,7 @@ from contracts.plan_hash import approval_is_valid
 from planner import coverage as cov
 
 from . import collect
+from .present import check_view
 from .evaluate import CORRECT, FAILED, INCONCLUSIVE, INCORRECT, case_status, classify_checks, evaluate_case, needed_fields
 
 MAX_LISTED = 200
@@ -74,15 +75,17 @@ def run_audit(plan: dict[str, Any], rest: SalesforceRest, *, case_ids: list[str]
         results = evaluate_case(auditable, primary, cid, row, linked, linked_error)
         for r in results:
             by_check[r["check_id"]][r["status"]] += 1
-        per_case.append({"case_id": cid, "status": case_status(results), "results": results})
+        per_case.append({"case_id": cid, "status": case_status(results), "results": results, "row": row})
 
     totals = Counter(c["status"] for c in per_case)
     evaluated = len(per_case)
     desc = {c["check_id"]: c.get("description", c["check_id"]) for c in plan["checks"]}
+    by_id = {c["check_id"]: c for c in auditable}
     listed_cases = [{"case_id": c["case_id"], "status": c["status"],
                      "failed_checks": [r["check_id"] for r in c["results"] if r["status"] == FAILED],
                      "inconclusive_checks": [r["check_id"] for r in c["results"] if r["status"] == INCONCLUSIVE],
-                     "evidence": {r["check_id"]: r["evidence"] for r in c["results"] if r["status"] == FAILED and r["evidence"]}}
+                     "evidence": {r["check_id"]: r["evidence"] for r in c["results"] if r["status"] == FAILED and r["evidence"]},
+                     "checks": [check_view(by_id[r["check_id"]], r, c["row"]) for r in c["results"]]}
                     for c in per_case if c["status"] != CORRECT]
     coverage = plan.get("rule_coverage")
     limitations = [
