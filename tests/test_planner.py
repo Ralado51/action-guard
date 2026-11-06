@@ -429,3 +429,15 @@ def test_cli_reports_safe_error(tmp_path, capsys, monkeypatch):
               transport=FakeVultr(Response(401, {"error": KEY})))
     out = capsys.readouterr().out
     assert rc == 1 and json.loads(out)["error"]["category"] == "auth" and KEY not in out
+
+
+def test_config_limits_from_env_are_validated():
+    from planner.config import PlannerConfig
+    base = {"VULTR_INFERENCE_API_KEY": "k", "VULTR_INFERENCE_MODEL": "m"}
+    assert PlannerConfig.from_env(base).max_tokens == 2000
+    cfg = PlannerConfig.from_env({**base, "VULTR_INFERENCE_MAX_TOKENS": "8000", "VULTR_INFERENCE_TIMEOUT_SECONDS": "120"})
+    assert cfg.max_tokens == 8000 and cfg.timeout_seconds == 120.0
+    for var, bad in (("VULTR_INFERENCE_MAX_TOKENS", "abc"), ("VULTR_INFERENCE_MAX_TOKENS", "10"),
+                     ("VULTR_INFERENCE_MAX_TOKENS", "999999"), ("VULTR_INFERENCE_TIMEOUT_SECONDS", "0")):
+        with pytest.raises(PlannerError):
+            PlannerConfig.from_env({**base, var: bad})
