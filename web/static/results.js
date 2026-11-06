@@ -220,10 +220,11 @@ function render() { if (data) overview(data); }
 
 async function route() {
   const h = location.hash;
-  const view = (!h || h.startsWith('#/story')) ? 'story' : h.startsWith('#/setup') ? 'setup' : h.startsWith('#/acceptance') ? 'acceptance' : h.startsWith('#/case/') ? 'case' : 'results';
-  ['story', 'results', 'case', 'setup', 'acceptance'].forEach(v => { $('#view-' + v).hidden = v !== view; });
-  ['story', 'results', 'acceptance', 'setup'].forEach(t => { const on = (t === 'results') ? (view === 'results' || view === 'case') : view === t; $('#tab-' + t).classList.toggle('on', on); $('#tab-' + t).toggleAttribute('aria-current', on); });
+  const view = (!h || h.startsWith('#/story')) ? 'story' : h.startsWith('#/live') ? 'live' : h.startsWith('#/setup') ? 'setup' : h.startsWith('#/acceptance') ? 'acceptance' : h.startsWith('#/case/') ? 'case' : 'results';
+  ['story', 'live', 'results', 'case', 'setup', 'acceptance'].forEach(v => { $('#view-' + v).hidden = v !== view; });
+  ['story', 'live', 'results', 'acceptance', 'setup'].forEach(t => { const on = (t === 'results') ? (view === 'results' || view === 'case') : view === t; $('#tab-' + t).classList.toggle('on', on); $('#tab-' + t).toggleAttribute('aria-current', on); });
   if (view === 'setup') return;
+  if (view === 'live') { window.AG && window.AG.showLive && window.AG.showLive(); return; }
   if (view === 'story') { window.AG && window.AG.showStory && window.AG.showStory(); return; }
   if (view === 'acceptance') { window.AG && window.AG.showAcceptance && window.AG.showAcceptance(); window.scrollTo(0, 0); return; }
   try {

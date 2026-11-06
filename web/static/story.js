@@ -30,6 +30,8 @@ function hero() {
   d.append(el('p', 'st-lead', 'Action Guard checks the Salesforce record against the agreed rule, not the agent’s word, and keeps a record of the decision to accept the result or investigate it.'));
   const b = el('button', 'primary', 'Walk through one Case in 60 seconds'); b.type = 'button'; b.onclick = () => go(1);
   d.append(b);
+  const tl = el('a', 'quiet linkbtn', 'Try it on a live Case'); tl.href = '#/live'; tl.hidden = true; d.append(tl);
+  fetch('/api/live/status', { cache: 'no-store' }).then(r => r.json()).then(j => { tl.hidden = !j.enabled; }).catch(() => {});
   d.append(el('p', 'muted st-note', 'Recorded run in a Salesforce developer org, with synthetic Cases only. Nothing here is executed live.'));
   return d;
 }
