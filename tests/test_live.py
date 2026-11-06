@@ -93,7 +93,7 @@ def test_agent_flow_runs_once_then_check_accepts_and_ids_are_masked(env):
     v = c.get(f"/api/live/sessions/{sid}").json()
     assert v["claims"]["outcome"] == "finished" and v["claims"]["source"] == "vultr-agent"
     out = c.post(f"/api/live/sessions/{sid}/check").json()
-    assert out["reports"][0]["decision"] == {"accepted": True, "severity": None}
+    assert out["reports"][0]["decision"] == {"accepted": True, "status": "correct", "severity": None}
     assert not IDS.search(json.dumps(out)) and not IDS.search(json.dumps(v))
 
 
@@ -113,7 +113,7 @@ def test_verifier_test_detects_then_fix_revalidates_and_closes_with_history(env)
     s = start(c, mode="verifier_test").json(); sid = s["session_id"]
     assert s["state"] == "agent_done" and s["claims"]["source"] == "controlled-fault" and calls == []
     chk = c.post(f"/api/live/sessions/{sid}/check").json()
-    assert chk["reports"][0]["decision"] == {"accepted": False, "severity": "critical"}
+    assert chk["reports"][0]["decision"] == {"accepted": False, "status": "incorrect", "severity": "critical"}
     fx = c.post(f"/api/live/sessions/{sid}/fix").json()
     assert [e["type"] for e in fx["finding"]["events"]] == ["opened", "assigned", "fix_recorded", "revalidated", "closed"]
     assert fx["finding"]["state"] == "closed" and len(fx["reports"]) == 2
@@ -159,3 +159,25 @@ def test_unknown_expired_and_busy_sessions(env):
         for i in range(2):
             db.execute("INSERT INTO sessions VALUES (?,?,?,?)", (f"{i:032x}", clock.t, "running", "{}"))
     assert start(c).status_code == 429
+
+
+def test_missing_evidence_is_reported_as_not_confirmed_not_as_a_failure(env):
+    demo, org, _, calls, c, *_ = env
+    sid = start(c, mode="verifier_test").json()["session_id"]
+    real = demo._audit
+    def doctored(s):
+        rep = real(s); row = rep["cases"][0]
+        row["status"], row["failed_checks"] = "inconclusive", []
+        for k in row["checks"]:
+            if k["status"] == "failed": k["status"] = "inconclusive"
+        row["inconclusive_checks"] = [k["check_id"] for k in row["checks"] if k["status"] == "inconclusive"]
+        return rep
+    demo._audit = doctored
+    d = c.post(f"/api/live/sessions/{sid}/check").json()["reports"][0]["decision"]
+    assert d == {"accepted": False, "status": "inconclusive", "severity": None}
+
+
+def test_scenarios_do_not_promise_a_resolution_the_agent_does_not_perform():
+    from web.app.live import SCENARIOS
+    for title, text, _ in SCENARIOS.values():
+        assert "already" in text and "Record the closure" in text and "follow-up" in text
