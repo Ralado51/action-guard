@@ -157,6 +157,16 @@ def demo_audit():
     return build_demo()
 
 
+@app.get('/api/recorded-run')
+def recorded_run():
+    # A real audit report recorded earlier (Ids masked). Static file shipped with the image; no live access.
+    path = Path(__file__).resolve().parents[1] / 'data' / 'recorded_run.json'
+    if not path.is_file():
+        raise HTTPException(404, 'No recorded run published.')
+    import json
+    return json.loads(path.read_text(encoding='utf-8'))
+
+
 @app.post('/api/runs', status_code=202, dependencies=[Depends(authorize), Depends(require_execution)])
 def execute(body: ExecuteRunRequest, background: BackgroundTasks, svc=Depends(workflow)):
     run_id = invoke(svc.reserve, body.approved_plan_id, body.expected_plan_hash)

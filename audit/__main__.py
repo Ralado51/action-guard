@@ -36,7 +36,14 @@ def main(argv=None, *, transport=None, secret=None) -> int:
     r.add_argument("--agent-runs", help="claims.json written by python -m vultr_agent run (adds the agent's own account to each Case)")
     r.add_argument("--list-all", action="store_true", help="list passing Cases too (for a recorded, shareable run)")
     r.add_argument("--explain", action="store_true", help="summary with the Vultr model (counts only)")
+    m = sub.add_parser("mask", help="Print a saved report with Salesforce Ids masked (for public display).")
+    m.add_argument("--report", required=True)
     args = ap.parse_args(argv)
+    if args.command == "mask":
+        from .mask import mask_report
+        with open(args.report, encoding="utf-8") as fh:
+            print(json.dumps(mask_report(json.load(fh)), ensure_ascii=False, separators=(",", ":")))
+        return 0
     try:
         with open(args.plan, encoding="utf-8") as fh:
             data = json.load(fh)

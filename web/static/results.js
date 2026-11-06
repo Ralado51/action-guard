@@ -8,11 +8,32 @@ let data = null, filter = 'all';
 
 function pct(r) { return r === null || r === undefined ? '—' : (r * 100).toFixed(1).replace(/\.0$/, '') + '%'; }
 
-async function loadDemo() {
-  if (data && data.synthetic) return data;
+let source = null, recorded = null, hasRecorded = false;
+
+async function loadSource(name) {
+  if (name === 'live' && data && !data.synthetic) return data;
+  if (name === 'real') {
+    if (!recorded) { const r = await fetch('/api/recorded-run', { cache: 'no-store' }); if (!r.ok) throw Error('No recorded run is published.'); recorded = fromReport(await r.json()); recorded.recordedNote = true; }
+    return (data = recorded);
+  }
   const r = await fetch('/api/demo/audit', { cache: 'no-store' });
   if (!r.ok) throw Error('The demonstration could not be loaded.');
   return (data = await r.json());
+}
+
+async function probeRecorded() {
+  try { const r = await fetch('/api/recorded-run', { method: 'HEAD', cache: 'no-store' }); hasRecorded = r.ok || r.status === 405; if (r.status === 405) { const g = await fetch('/api/recorded-run', { cache: 'no-store' }); hasRecorded = g.ok; } } catch { hasRecorded = false; }
+}
+
+function drawSwitch() {
+  const box = $('#source-switch'); box.replaceChildren();
+  box.hidden = !hasRecorded || source === 'live';
+  if (box.hidden) return;
+  [['real', 'Recorded real run'], ['demo', 'Synthetic demonstration']].forEach(([k, t]) => {
+    const b = el('button', 'chip' + (source === k ? ' on' : ''), t); b.type = 'button'; b.setAttribute('aria-pressed', source === k);
+    b.onclick = () => { source = k; filter = 'all'; location.hash = '#/'; route(); };
+    box.append(b);
+  });
 }
 
 // Real audit reports list only failing records; the rest are anonymous "met the rule" cells.
@@ -31,7 +52,7 @@ function fromReport(r) {
   });
   const sel = r.selection.mode === 'case_ids' ? 'List of Cases reported by the agent' : 'Window of closed Cases';
   const hasAgent = cases.some(c => c.agent);
-  return { synthetic: false, label: hasAgent ? 'Recorded real run: a Vultr-hosted agent acted on synthetic Cases in a Salesforce developer org; Action Guard then audited the records read-only.' : null,
+  return { synthetic: false, label: hasAgent ? 'Recorded real run: a Vultr-hosted agent acted on synthetic Cases in a Salesforce developer org; Action Guard then audited the records read-only. Salesforce Ids are masked. A small run says little about how often the agent fails.' : null,
            agent_reported: t.evaluated, totals: t, outcome_rate: r.outcome_rate, by_check: r.by_check,
            not_auditable: r.not_auditable, limitations: r.limitations.concat(r.collection_errors || []), cases, onlyListed: !r.all_cases_listed, summary: r.summary,
            basis: { plan_version: r.plan_version, plan_hash: r.plan_hash, generated_at: r.generated_at, selection: sel } };
@@ -53,7 +74,7 @@ function strip(d) {
 
 function failuresByRule(d) {
   const box = el('section', 'block');
-  box.append(el('h2', '', 'Where the agent fell short'));
+  box.append(el('h2', '', d.totals.incorrect + d.totals.inconclusive ? 'Where the agent fell short' : 'What each check found'));
   const rows = d.by_check.slice().sort((a, b) => (b.failed + b.inconclusive) - (a.failed + a.inconclusive));
   const total = d.totals.evaluated || 1;
   rows.forEach(c => {
@@ -188,14 +209,18 @@ async function route() {
   $('#tab-results').classList.toggle('on', view !== 'setup'); $('#tab-setup').classList.toggle('on', view === 'setup');
   $('#tab-results').toggleAttribute('aria-current', view !== 'setup'); $('#tab-setup').toggleAttribute('aria-current', view === 'setup');
   if (view === 'setup') return;
-  try { if (!data) await loadDemo(); } catch (e) { $('#results').replaceChildren(el('p', 'muted', e.message)); return; }
+  try {
+    if (source === null) { await probeRecorded(); source = hasRecorded ? 'real' : 'demo'; }
+    if (!(data && source === 'live')) await loadSource(source);
+  } catch (e) { $('#results').replaceChildren(el('p', 'muted', e.message)); return; }
+  drawSwitch();
   const flag = $('#synthetic-flag'); flag.hidden = !data.label; flag.textContent = data.label || '';
   if (view === 'case') detail(decodeURIComponent(h.slice(7))); else { overview(data); }
   window.scrollTo(0, 0);
 }
 
-window.AG = { showReal(report) { data = fromReport(report); filter = 'all'; location.hash = '#/'; route(); },
-              showDemo() { data = null; filter = 'all'; route(); } };
+window.AG = { showReal(report) { data = fromReport(report); source = 'live'; filter = 'all'; location.hash = '#/'; route(); },
+              showDemo() { source = null; data = null; filter = 'all'; route(); } };
 window.addEventListener('hashchange', route);
 route();
 })();
