@@ -29,6 +29,13 @@ def build_bundle(store: FindingStore, finding_id: str, reports: list[dict[str, A
     missing = needed - set(by_id)
     if missing:
         raise ValueError("Missing audit report(s): " + ", ".join(sorted(missing)))
+    recorded = {}
+    for e in state["events"]:
+        if e["type"] in ("opened", "revalidated"):
+            recorded[e["data"]["audit_id"]] = e["data"].get("report_hash")
+    for aid in sorted(needed):
+        if report_hash(by_id[aid]) != recorded.get(aid):
+            raise ValueError(f"Report {aid} does not match the hash recorded in the finding's event; refusing to export.")
     files: dict[str, Any] = {}
     masking: dict[str, dict[str, str]] = {}
     for aid in sorted(needed):
@@ -68,7 +75,16 @@ def verify_bundle(bundle: dict[str, Any]) -> list[str]:
         for e in events:
             if e["type"] == "revalidated" and "report:" + e["data"]["audit_id"] not in files:
                 problems.append("A revalidation report is missing.")
-        if not m.get("masked"):
+        if m.get("masked"):
+            for e in events:
+                aid = e["data"].get("audit_id") if e["type"] in ("opened", "revalidated") else None
+                info = m.get("masking", {}).get(aid) if aid else None
+                if aid and "report:" + aid in files:
+                    if not info or info.get("original_sha256") != e["data"].get("report_hash"):
+                        problems.append(f"Event {e['seq']}: the original report hash in the masking record does not match the event.")
+                    elif info.get("masked_sha256") != sha(files["report:" + aid]):
+                        problems.append(f"Masked report {aid} does not match its masking record.")
+        else:
             for e in events:
                 aid = e["data"].get("audit_id") if e["type"] in ("opened", "revalidated") else None
                 if aid and "report:" + aid in files and e["data"].get("report_hash") != sha(files["report:" + aid]):

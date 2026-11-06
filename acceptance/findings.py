@@ -53,6 +53,19 @@ def report_hash(report: dict[str, Any]) -> str:
     return sha(report)
 
 
+def check_row_consistency(row: dict[str, Any]) -> None:
+    """A Case row may only be trusted if its status follows from its own checks."""
+    checks = row.get("checks")
+    if not checks:
+        raise FindingError("The report row has no per-check results, so its status cannot be verified.")
+    failed = sorted(c["check_id"] for c in checks if c.get("status") == "failed")
+    inconc = sorted(c["check_id"] for c in checks if c.get("status") == "inconclusive")
+    if sorted(row.get("failed_checks") or []) != failed or sorted(row.get("inconclusive_checks") or []) != inconc:
+        raise FindingError("The report is inconsistent: the listed failures do not match the per-check results.")
+    all_passed = not failed and not inconc and all(c.get("status") == "passed" for c in checks)
+    if (row.get("status") == CORRECT) != all_passed:
+        raise FindingError("The report is inconsistent: the Case status does not follow from its per-check results.")
+
 class FindingStore:
     def __init__(self, directory: str | os.PathLike, clock=_now):
         self.dir, self.clock = Path(directory), clock
@@ -115,6 +128,8 @@ class FindingStore:
         policy = report.get("policy")
         if not policy:
             raise FindingError("The report has no policy block; run the audit again.")
+        for c in report["cases"]:
+            check_row_consistency(c)        # a row marked correct that hides a failed check must not slip through
         existing = {s["case_id"] for s in self.list() if s["state"] not in TERMINAL}
         opened = []
         for c in report["cases"]:
@@ -163,6 +178,7 @@ class FindingStore:
         row = next((c for c in report["cases"] if key15(c["case_id"]) == key15(s["case_id"])), None)
         if row is None:
             raise FindingError("The new audit does not include this Case (use --list-all or its Id).")
+        check_row_consistency(row)
         passed = row["status"] == CORRECT
         self._append({"finding_id": fid, "type": "revalidated", "actor": actor, "note": None, "data": {
             "passed": passed, "audit_id": report["audit_id"], "report_hash": report_hash(report), "case_status": row["status"]}})
