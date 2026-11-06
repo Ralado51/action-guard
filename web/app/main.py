@@ -16,6 +16,7 @@ from planner.errors import PlannerError
 from .service import Workflow, WorkflowError
 from .mode import demo_mode
 from audit.demo import build_demo
+from .live import LiveDemo, LiveError
 
 app = FastAPI(title='Action Guard', version='0.2.0')
 
@@ -94,6 +95,56 @@ class AuditRequest(Body):
 
 class ExecuteRunRequest(HashRequest):
     approved_plan_id: str = Field(min_length=1)
+
+
+@lru_cache
+def live_demo():
+    return LiveDemo(os.environ.get('ACTION_GUARD_DATA_DIR', 'runs/web') + '/live')
+
+
+class LiveCreate(Body):
+    code: str = Field(min_length=1, max_length=200)
+    scenario: str = Field(min_length=1, max_length=40)
+    mode: Literal['agent', 'verifier_test']
+
+
+def live_call(fn, *args):
+    try:
+        return fn(*args)
+    except LiveError as e:
+        raise HTTPException(e.code, e.message)
+
+
+@app.get('/api/live/status')
+def live_status(demo=Depends(live_demo)):
+    return demo.status()
+
+
+@app.post('/api/live/sessions', status_code=201)
+def live_create(body: LiveCreate, demo=Depends(live_demo)):
+    return live_call(demo.create, body.code, body.scenario, body.mode)
+
+
+@app.post('/api/live/sessions/{sid}/run', status_code=202)
+def live_run(sid: str, background: BackgroundTasks, demo=Depends(live_demo)):
+    if live_call(demo.begin_run, sid):
+        background.add_task(demo.work, sid)
+    return live_call(demo.view, sid)
+
+
+@app.get('/api/live/sessions/{sid}')
+def live_get(sid: str, demo=Depends(live_demo)):
+    return live_call(demo.view, sid)
+
+
+@app.post('/api/live/sessions/{sid}/check')
+def live_check(sid: str, demo=Depends(live_demo)):
+    return live_call(demo.check, sid)
+
+
+@app.post('/api/live/sessions/{sid}/fix')
+def live_fix(sid: str, demo=Depends(live_demo)):
+    return live_call(demo.fix, sid)
 
 
 @app.get('/health')
