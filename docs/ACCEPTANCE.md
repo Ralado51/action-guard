@@ -8,3 +8,7 @@ Turns a detected divergence into a tracked finding that closes only with evidenc
 - **Calibration**: `python -m calibration seed|score|remediate` injects known faults and controls (synthetic Cases, `--confirm-write` required) and scores the verifier against the ground truth.
 
 Limits: names are declared on a shared token (prototype, not authenticated identities); injected faults say how the verifier behaves, not how often real agents fail; owner-preserved and unexpected-change checks still need a before-state and stay declared gaps.
+
+Guards added after review: a report row is trusted only if its status follows from its own per-check results (applies when opening and when revalidating); a dossier is exported only from reports whose hash matches the one recorded in the finding's events, and a masked dossier's masking record must match those events.
+
+Delivery limits: findings are managed through the CLI (the web tab shows the recorded flow; there is no API to assign, fix or close). The recorded cycle proves the Case was regularised, not that the agent's behaviour was corrected in a new run.

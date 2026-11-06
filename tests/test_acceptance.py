@@ -143,3 +143,52 @@ def test_masked_dossier_hides_ids_and_still_verifies(world):
 
 def test_canonical_json_is_browser_compatible_for_integral_floats():
     assert canonical({"b": 1.0, "a": [0.6667, "é"]}) == '{"a":[0.6667,"é"],"b":1}'
+
+
+def test_revalidation_rejects_a_report_whose_status_contradicts_its_checks(world):
+    fake, store, rep, ids = world
+    store.open_from_report(rep, "Lead")
+    fid = next(s["finding_id"] for s in store.list() if s["case_id"] == ids["noreason"])
+    store.record_fix(fid, "Analyst", "Believed fixed, but the reason is still empty")
+    forged = make_report(fake, [ids["noreason"]], "2026-11-06T11:00:00Z")          # reason still empty
+    forged["cases"][0]["status"] = "correct"                                      # status says correct, checks say failed
+    with pytest.raises(FindingError, match="inconsistent"):
+        store.revalidate(fid, "Analyst", forged)
+    forged["cases"][0]["failed_checks"] = []                                      # hide the list too: per-check results still fail
+    with pytest.raises(FindingError, match="inconsistent"):
+        store.revalidate(fid, "Analyst", forged)
+    assert store.state(fid)["state"] == "fix_recorded"
+    with pytest.raises(FindingError):
+        store.close(fid, "Lead")
+
+
+def test_opening_refuses_a_report_that_hides_a_failed_check(world):
+    _, store, rep, _ = world
+    forged = json.loads(json.dumps(rep))
+    for c in forged["cases"]:
+        c["status"] = "correct"
+    with pytest.raises(FindingError, match="inconsistent"):
+        store.open_from_report(forged, "Lead")
+    assert store.list() == []
+
+
+def test_export_refuses_a_report_that_differs_from_the_hash_in_the_event(world):
+    fake, store, rep, ids = world
+    store.open_from_report(rep, "Lead")
+    fid = next(s["finding_id"] for s in store.list() if s["case_id"] == ids["noreason"])
+    swapped = json.loads(json.dumps(rep))
+    swapped["totals"]["correct"] = 7                                              # same audit_id, different content
+    for mask in (False, True):
+        with pytest.raises(ValueError, match="does not match the hash"):
+            build_bundle(store, fid, [swapped], mask=mask)
+    assert verify_bundle(build_bundle(store, fid, [rep], mask=True)) == []
+
+
+def test_masked_bundle_with_a_forged_masking_record_fails_verification(world):
+    _, store, rep, ids = world
+    store.open_from_report(rep, "Lead")
+    fid = next(s["finding_id"] for s in store.list() if s["case_id"] == ids["noreason"])
+    b = build_bundle(store, fid, [rep], mask=True)
+    t = json.loads(json.dumps(b))
+    aid = next(iter(t["manifest"]["masking"])); t["manifest"]["masking"][aid]["original_sha256"] = "sha256:" + "2" * 64
+    assert any("masking record" in p for p in verify_bundle(t))
