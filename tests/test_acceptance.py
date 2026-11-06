@@ -192,3 +192,37 @@ def test_masked_bundle_with_a_forged_masking_record_fails_verification(world):
     t = json.loads(json.dumps(b))
     aid = next(iter(t["manifest"]["masking"])); t["manifest"]["masking"][aid]["original_sha256"] = "sha256:" + "2" * 64
     assert any("masking record" in p for p in verify_bundle(t))
+
+
+def test_revalidation_requires_exactly_the_checks_required_when_the_finding_opened(world):
+    fake, store, rep, ids = world
+    store.open_from_report(rep, "Lead")
+    fid = next(s["finding_id"] for s in store.list() if s["case_id"] == ids["noreason"])
+    store.record_fix(fid, "Analyst", "Believed fixed, but the reason is still empty")
+    base = make_report(fake, [ids["noreason"]], "2026-11-06T11:00:00Z")          # reason still empty
+
+    dropped = json.loads(json.dumps(base)); row = dropped["cases"][0]
+    row["checks"] = [c for c in row["checks"] if c["status"] == "passed"]          # remove the failed check
+    row.update(status="correct", failed_checks=[], inconclusive_checks=[])
+    with pytest.raises(FindingError, match="incomplete"):
+        store.revalidate(fid, "Analyst", dropped)
+
+    dup = json.loads(json.dumps(base)); dup["cases"][0]["checks"].append(dict(dup["cases"][0]["checks"][0]))
+    with pytest.raises(FindingError, match="more than once"):
+        store.revalidate(fid, "Analyst", dup)
+
+    extra = json.loads(json.dumps(base)); extra["cases"][0]["checks"].append(
+        {"check_id": "chk_invented", "description": "x", "status": "passed", "expected": "x", "found": "x"})
+    with pytest.raises(FindingError, match="incomplete|unknown"):
+        store.revalidate(fid, "Analyst", extra)
+    assert store.state(fid)["state"] == "fix_recorded"
+
+
+def test_opening_refuses_a_report_whose_rows_miss_required_checks(world):
+    _, store, rep, _ = world
+    forged = json.loads(json.dumps(rep)); c = forged["cases"][1]
+    c["checks"] = [k for k in c["checks"] if k["status"] == "passed"]
+    c.update(status="correct", failed_checks=[], inconclusive_checks=[])
+    with pytest.raises(FindingError, match="incomplete"):
+        store.open_from_report(forged, "Lead")
+    assert store.list() == []

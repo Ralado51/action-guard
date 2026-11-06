@@ -11,4 +11,6 @@ Limits: names are declared on a shared token (prototype, not authenticated ident
 
 Guards added after review: a report row is trusted only if its status follows from its own per-check results (applies when opening and when revalidating); a dossier is exported only from reports whose hash matches the one recorded in the finding's events, and a masked dossier's masking record must match those events.
 
+Completeness: when a finding opens, the checks the policy observes are recorded in the event (`expected_checks`); a revalidation report must carry exactly that set for the Case, with no missing, duplicated or unknown check. Findings opened before this guard cannot be revalidated. The report totals and per-check summary are not cross-checked, and the plan itself is not re-evaluated here: this layer trusts a report that carries the right plan hash and internally consistent rows.
+
 Delivery limits: findings are managed through the CLI (the web tab shows the recorded flow; there is no API to assign, fix or close). The recorded cycle proves the Case was regularised, not that the agent's behaviour was corrected in a new run.
