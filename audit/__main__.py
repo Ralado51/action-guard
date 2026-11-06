@@ -23,10 +23,17 @@ from .run import AuditBlocked, run_audit
 
 
 def _merge(paths):
+    """Merge claims files. Older files without a `source` get it from the run folder name."""
     out = {}
     for p in paths or []:
         with open(p, encoding="utf-8") as fh:
-            out.update(json.load(fh))
+            data = json.load(fh)
+        folder = os.path.basename(os.path.dirname(os.path.abspath(p)))
+        guess = "vultr-agent" if folder.startswith("vultr-run") else "agentforce" if folder.startswith("agentforce-run") else ""
+        for k, v in data.items():
+            if isinstance(v, dict) and not v.get("source") and guess:
+                v = {**v, "source": guess}
+            out[k] = v
     return out or None
 
 

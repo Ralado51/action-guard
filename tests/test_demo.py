@@ -105,3 +105,14 @@ def test_audit_merges_two_executors_and_keeps_their_source_labels():
             b[:15]: {"source": "agentforce", "outcome": "finished", "final_message": "y", "steps": []}}
     r = run_audit(approved_plan(), rest_for(fake), case_ids=[a, b], agent_runs=runs, list_all=True)
     assert [c["agent"]["source"] for c in r["cases"]] == ["vultr-agent", "agentforce"]
+
+
+def test_claims_without_source_get_it_from_the_run_folder(tmp_path):
+    import json
+    from audit.__main__ import _merge
+    d = tmp_path / "vultr-run-abc"; d.mkdir()
+    (d / "claims.json").write_text(json.dumps({"500X": {"outcome": "finished"}}))
+    e = tmp_path / "agentforce-run-xyz"; e.mkdir()
+    (e / "claims.json").write_text(json.dumps({"500Y": {"outcome": "finished", "source": "agentforce"}}))
+    m = _merge([str(d / "claims.json"), str(e / "claims.json")])
+    assert m["500X"]["source"] == "vultr-agent" and m["500Y"]["source"] == "agentforce"
