@@ -150,3 +150,23 @@ def test_cli_refuses_without_confirm_write(tmp_path, monkeypatch, capsys):
     (tmp_path / "a.json").write_text(json.dumps({"case_ids": [CASE]}))
     assert main(["run", "--authorized", str(tmp_path / "a.json")], transport=Org()) == 1
     assert "--confirm-write" in capsys.readouterr().out
+
+
+def test_cli_second_run_does_not_touch_the_same_case_again(tmp_path, monkeypatch):
+    from vultr_agent.__main__ import main
+    for k, v in ENV.items(): monkeypatch.setenv(k, v)
+    for k, v in {"SF_CLIENT_ID": "i", "SF_CLIENT_SECRET": "s", "VULTR_INFERENCE_API_KEY": "k", "VULTR_INFERENCE_MODEL": "m"}.items():
+        monkeypatch.setenv(k, v)
+    org = Org()
+    replies = [call("read_case", case_id=CASE), call("close_case", case_id=CASE, closure_reason="Cancelled"),
+               call("create_followup_task", case_id=CASE, subject=FOLLOWUP_SUBJECT), FINAL]
+    model = Model(replies * 2)
+
+    class Both:
+        def request(self, method, url, **kw):
+            return (model if "/chat/completions" in url else org).request(method, url, **kw)
+    (tmp_path / "a.json").write_text(json.dumps({"case_ids": [CASE]}))
+    args = ["run", "--authorized", str(tmp_path / "a.json"), "--confirm-write"]
+    assert main(args, transport=Both()) == 0
+    assert main(args, transport=Both()) == 0
+    assert len(org.tasks) == 1 and model.calls == 4

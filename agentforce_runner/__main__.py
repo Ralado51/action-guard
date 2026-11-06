@@ -17,6 +17,7 @@ from connector.agent_api import REJECTED, SENT_OK, UNCERTAIN, AgentClient
 from connector.auth import AuthError, get_token
 from connector.config import ConfigError, SalesforceConfig
 from connector.ids import key15
+from connector.ledger import Ledger
 from connector.rest import QueryError, SalesforceRest
 from connector.snapshot import utc_now
 from connector.transport import UrllibTransport
@@ -48,6 +49,7 @@ def main(argv=None, *, transport=None, secret=None) -> int:
         authorized = json.loads(auth_path.read_text())["case_ids"]
         run_dir = auth_path.parent / ("agentforce-run-" + uuid.uuid4().hex[:8])
         run_dir.mkdir(parents=True)
+        ledger = Ledger(auth_path.parent); ledger.import_existing()
         claims, done = {}, 0
         for idx, cid in enumerate(authorized):
             if done >= args.limit:
@@ -55,6 +57,9 @@ def main(argv=None, *, transport=None, secret=None) -> int:
             rows = rest.query(f"SELECT Subject FROM Case WHERE Id = '{cid}'")
             if not rows or not str(rows[0].get("Subject") or "").startswith(MARKER):
                 print(f"{cid}: skipped (not found or not marked as synthetic); nothing was sent.")
+                continue
+            if not ledger.reserve(cid, "agentforce"):
+                print(f"{cid}: skipped (already handled or reserved by an earlier run; never sent twice).")
                 continue
             rec = agent.run_once(build_request_text(cid, REASONS[idx % len(REASONS)]))
             outcome = "finished" if rec.outcome == SENT_OK else rec.outcome
@@ -65,11 +70,17 @@ def main(argv=None, *, transport=None, secret=None) -> int:
             (run_dir / f"{key15(cid)}.json").write_text(json.dumps(rec.to_dict(), indent=2, ensure_ascii=False, default=str))
             print(f"{cid}: {outcome}")
             done += 1
+            ledger.record(cid, "agentforce", rec.outcome)
             if rec.outcome == UNCERTAIN:
                 print("Stopping: the outcome is uncertain. Check this Case in Salesforce before continuing; nothing is retried.")
                 break
             if rec.outcome == REJECTED:
-                print("The request was refused before the action ran.")
+                if rec.session_id is None:
+                    print("No session was opened, so no message was sent for this Case. It stays reserved; use a new Case.")
+                else:
+                    print(f"The request was refused (HTTP {rec.http_status}), but this does not prove that no action ran. "
+                          "Stopping: check the Case in Salesforce before anything else.")
+                    break
         (run_dir / "claims.json").write_text(json.dumps(claims, indent=2, ensure_ascii=False))
         print("Evidence saved in", run_dir)
         return 0

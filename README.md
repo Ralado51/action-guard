@@ -40,7 +40,7 @@ before/after snapshots ──► deterministic engine ──► evidence report
 
 Verified:
 
-- 422 automated tests pass (Python 3.12 and 3.13) with Salesforce and Vultr **simulated**. Several safety guards were mutation-checked.
+- 429 automated tests pass (Python 3.12 and 3.13) with Salesforce and Vultr **simulated**. Several safety guards were mutation-checked.
 - Against a real Salesforce developer org (synthetic data only), the operator reported running the full CLI flow once: plan from real Describe metadata, Case binding, hash approval, Agentforce execution, six checks `passed`.
 - Plan generation with the real Vultr model and real Describe metadata works end to end in the web UI. The server correctly downgraded the clause *"Verify the changes using the before and after data"* to **not verified**.
 - A Vultr-hosted agent handled 10 synthetic Cases in the real developer org through guarded tools (close and create-task are separate calls); the Agentforce agent handled 10 other synthetic Cases. The read-only audit, with the same approved plan, found all 20 meeting every auditable check (3 plan checks are not auditable). A pilot of 1 Case came first. These are small runs with different agent instructions: they show the pipeline works with two executors and are not a comparison or a failure rate. They are published as a recorded run with executor labels and Salesforce Ids masked.

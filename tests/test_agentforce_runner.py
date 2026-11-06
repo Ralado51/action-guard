@@ -55,3 +55,46 @@ def test_server_error_after_send_is_uncertain_and_stops(monkeypatch, tmp_path, c
     a = env(monkeypatch, tmp_path); f = Fake(message_status=500)
     main(["run", "--authorized", a, "--confirm-write"], transport=f)
     assert f.sent == 1 and "uncertain" in capsys.readouterr().out
+
+
+def test_second_run_never_resends_the_same_case(monkeypatch, tmp_path):
+    a = env(monkeypatch, tmp_path); f = Fake()
+    main(["run", "--authorized", a, "--confirm-write"], transport=f)
+    main(["run", "--authorized", a, "--confirm-write"], transport=f)
+    assert f.sent == 1
+
+
+def test_cases_from_earlier_runs_are_imported_as_already_handled(monkeypatch, tmp_path):
+    a = env(monkeypatch, tmp_path); f = Fake()
+    old = tmp_path / "vultr-run-abcd1234"; old.mkdir()
+    (old / (CASE[:15] + ".json")).write_text("{}")
+    main(["run", "--authorized", a, "--confirm-write"], transport=f)
+    assert f.sent == 0
+
+
+def test_crash_after_reservation_still_blocks_reuse(monkeypatch, tmp_path):
+    from connector.ledger import Ledger
+    a = env(monkeypatch, tmp_path); f = Fake()
+    assert Ledger(tmp_path).reserve(CASE, "agentforce")          # reserved, then the process "died"
+    main(["run", "--authorized", a, "--confirm-write"], transport=f)
+    assert f.sent == 0
+
+
+def test_rejection_after_send_is_not_called_proof_of_no_action(monkeypatch, tmp_path, capsys):
+    a = env(monkeypatch, tmp_path); f = Fake(message_status=400)
+    main(["run", "--authorized", a, "--confirm-write"], transport=f)
+    out = capsys.readouterr().out
+    assert "does not prove that no action ran" in out and "before the action ran" not in out
+
+
+def test_rejection_without_session_says_nothing_was_sent(monkeypatch, tmp_path, capsys):
+    a = env(monkeypatch, tmp_path)
+
+    class NoSession(Fake):
+        def request(self, method, url, **kw):
+            if url.endswith("/sessions") and method == "POST":
+                return Response(403, {"message": "no"})
+            return super().request(method, url, **kw)
+    f = NoSession()
+    main(["run", "--authorized", a, "--confirm-write"], transport=f)
+    assert f.sent == 0 and "no message was sent" in capsys.readouterr().out
