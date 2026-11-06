@@ -167,6 +167,18 @@ def recorded_run():
     return json.loads(path.read_text(encoding='utf-8'))
 
 
+FLOW_PATH = Path(__file__).resolve().parents[1] / 'data' / 'recorded_flow.json'
+
+
+@app.get('/api/recorded-flow')
+def recorded_flow():
+    path = FLOW_PATH
+    if not path.is_file():
+        raise HTTPException(404, 'No recorded acceptance flow published.')
+    import json
+    return json.loads(path.read_text(encoding='utf-8'))
+
+
 @app.post('/api/runs', status_code=202, dependencies=[Depends(authorize), Depends(require_execution)])
 def execute(body: ExecuteRunRequest, background: BackgroundTasks, svc=Depends(workflow)):
     run_id = invoke(svc.reserve, body.approved_plan_id, body.expected_plan_hash)

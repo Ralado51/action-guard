@@ -12,6 +12,7 @@ from contracts.plan_hash import approval_is_valid
 from planner import coverage as cov
 
 from . import collect
+from .policy import policy_view
 from .present import check_view
 from .evaluate import CORRECT, FAILED, INCONCLUSIVE, INCORRECT, case_status, classify_checks, evaluate_case, needed_fields
 
@@ -120,6 +121,7 @@ def run_audit(plan: dict[str, Any], rest: SalesforceRest, *, case_ids: list[str]
         "not_auditable": skipped,
         "cases": listed_cases[:MAX_LISTED], "cases_truncated": len(listed_cases) > MAX_LISTED, "all_cases_listed": list_all,
         "collection_errors": errors, "limitations": limitations,
+        "policy": policy_view(plan, auditable, skipped),
     }
     if coverage:
         report["rule_coverage"] = coverage

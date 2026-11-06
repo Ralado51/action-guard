@@ -355,6 +355,57 @@
     },
     "all_cases_listed": {
       "type": "boolean"
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "policy_version": {
+          "type": "string"
+        },
+        "critical_total": {
+          "type": "integer"
+        },
+        "critical_observed": {
+          "type": "integer"
+        },
+        "all_total": {
+          "type": "integer"
+        },
+        "all_observed": {
+          "type": "integer"
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "check_id": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "severity": {
+                "enum": [
+                  "critical",
+                  "operational"
+                ]
+              },
+              "observed": {
+                "type": "boolean"
+              },
+              "why_not_observed": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      }
     }
   }
 }
