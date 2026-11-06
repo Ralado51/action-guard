@@ -1,48 +1,49 @@
-# Auditoria de resultados (somente leitura)
+# Outcome audit (read-only)
 
-**Pergunta:** de todas as vezes que o agente disse ter feito a acao, em quantas os dados confirmam o resultado esperado pela regra de negocio?
+**Question:** out of all the times the agent said it performed the action, in how many does the data confirm the result the business rule expects?
 
-O fluxo "plano -> aprovacao -> execucao -> verificacao" continua sendo o **teste de aceite** (antes do go-live). A auditoria e o uso em producao: reaproveita o plano aprovado e o motor de verificacoes, mas **nao executa nada e nao escreve no Salesforce**.
+The flow "plan → approval → execution → verification" remains the **acceptance test** (before go-live). The audit is the production use: it reuses the approved plan and the verification engine, but **runs nothing and writes nothing to Salesforce**.
 
-## Como funciona
+## How it works
 
-1. Um plano aprovado (hash vigente) define as verificacoes. O `case_id` do plano de teste e ignorado: o plano e usado como modelo da regra.
-2. Selecao dos registros:
-   - `--case-ids arquivo`: os Cases que o agente **informou** ter encerrado. Pega o caso "disse que fechou e nao fechou".
-   - `--since 2026-11-01T00:00:00Z [--modified-by <IdDoUsuarioDoAgente>] [--limit N]`: Cases ja encerrados na janela. **Nao ve** um Case que o agente alegou encerrar e continua aberto.
-3. Leitura via REST (GET): Cases e Tasks vinculadas, em lotes. Falha de consulta nunca vira "zero registros": o registro fica inconclusivo.
-4. Avaliacao deterministica do **estado final** (`audit/evaluate.py`). Sem LLM, sem texto do agente.
-5. Agregacao: taxa de resultados corretos, falhas por verificacao, lista de registros com falha e a evidencia do valor observado.
-6. Resumo: texto deterministico do servidor; opcionalmente (`--explain`) um resumo do modelo da Vultr.
+1. An approved plan (current hash) defines the checks. The test plan's `case_id` is ignored: the plan is used as the rule template.
+2. Record selection:
+   - `--case-ids file`: the Cases the agent **reported** as closed. This catches "said it closed it, but did not".
+   - `--since 2026-11-01T00:00:00Z [--modified-by <AgentUserId>] [--limit N]`: Cases already closed in the window. It **cannot see** a Case the agent claimed to close that is still open.
+3. Reads via REST (GET only): Cases and linked Tasks, in batches. A failed query never becomes "zero records": the record becomes inconclusive.
+4. Deterministic evaluation of the **final state** (`audit/evaluate.py`). No LLM, no agent text.
+5. Aggregation: correct-outcome rate, failures per check, the list of failing records and the observed value as evidence.
+6. Summary: a deterministic server text; optionally (`--explain`) a summary written by the Vultr model.
 
 ```bash
-python -m audit run --plan approved_plan.json --case-ids cases_do_agente.txt [--explain]
+python -m audit run --plan approved_plan.json --case-ids agent_cases.txt [--explain]
 python -m audit run --plan approved_plan.json --since 2026-11-01T00:00:00Z --limit 200
 ```
-Credenciais `SF_*` (e `VULTR_INFERENCE_*` com `--explain`) vem do ambiente. O relatorio e salvo em `runs/audit-<id>/audit_report.json` (contrato `contracts/audit_report.schema.json`). Contem IDs de registros: nao publique relatorios de uma org real.
 
-## O que e e o que nao e verificado
+`SF_*` credentials (and `VULTR_INFERENCE_*` with `--explain`) come from the environment. The report is saved to `runs/audit-<id>/audit_report.json` (contract `contracts/audit_report.schema.json`). It contains record Ids: do not publish reports from a real org.
 
-| Verificacao do plano | Na auditoria |
+## What is and is not verified
+
+| Plan check | In the audit |
 |---|---|
-| campo igual a valor fixo (ex.: Status = Closed) | auditavel |
-| campo preenchido (ex.: motivo) | auditavel |
-| Task vinculada correspondente, contagem exata | auditavel (conta tambem Task anterior a acao) |
-| campo inalterado, nenhuma mudanca inesperada | **nao auditavel** (exige o estado anterior) |
-| motivo igual ao do plano de teste | **nao auditavel** (cada registro tem o seu motivo) |
+| field equals a fixed value (e.g. Status = Closed) | auditable |
+| field not empty (e.g. reason) | auditable |
+| matching linked Task, exact count | auditable (also counts a Task that existed before the action) |
+| field unchanged, no unexpected change | **not auditable** (needs the previous state) |
+| reason equals the test plan's reason | **not auditable** (each record has its own reason) |
 
-Verificacoes nao auditaveis aparecem no relatorio como NAO verificadas; nunca contam como aprovadas. Registros inconclusivos **nao** contam como corretos. Falha comprovada vence inconclusivo.
+Non-auditable checks appear in the report as NOT verified and never count as passed. Inconclusive records do **not** count as correct. A proven failure beats inconclusive.
 
-## Privacidade e o papel do LLM
+## Privacy and the role of the LLM
 
-O modelo da Vultr nao decide veredito. No resumo opcional ele recebe somente contagens, descricoes de verificacoes e textos de clausulas nao cobertas: nunca IDs nem valores de registros. A saida e validada (sem numeros que nao existam nos dados, sem aparencia de Id, ate 700 caracteres); se falhar, vale o resumo do servidor, que acompanha o do modelo (`summary.server_text`).
+The Vultr model does not decide any verdict. In the optional summary it receives only counts, check descriptions and the text of uncovered clauses: never record Ids or values. The output is validated (no numbers that do not exist in the data, nothing that looks like an Id, at most 700 characters); if it fails, the server summary applies. The server summary is always shown next to the model's (`summary.server_text`).
 
-Limite conhecido do guarda: ele barra numeros inexistentes, mas um numero real usado no contexto errado passa. Por isso o texto do servidor sempre fica ao lado.
+Known limit of the guard: it rejects numbers that do not exist, but a real number used in the wrong context passes. That is why the server text always stays alongside.
 
-## Limites
+## Limits
 
-- Sem o antes, nao ha proprietario preservado nem mudancas inesperadas.
-- Uma amostra por janela sofre de vies de sobrevivencia (so Cases ja encerrados).
-- A taxa so mede as regras escritas e aprovadas; cobertura parcial aparece em `coverage_status`.
-- Nao ha agendamento nem alertas nesta versao.
-- Validado apenas com Salesforce e Vultr simulados; nenhuma auditoria foi feita na org real.
+- Without the "before" state there is no owner-preserved check and no unexpected-change check.
+- A window sample suffers from survivorship bias (only Cases that are already closed).
+- The rate only measures the rules that were written and approved; partial coverage appears in `coverage_status`.
+- No scheduling or alerts in this version.
+- Result on the real developer org (synthetic Cases, run through the web UI): three Cases audited, one met every auditable check, one failed with no follow-up Task and one with two. Three plan checks were reported as not auditable. This is a functional check on a handful of records, not a measurement of agent accuracy.
