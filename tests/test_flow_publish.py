@@ -47,3 +47,15 @@ def test_recorded_flow_endpoint(tmp_path, monkeypatch):
     p = tmp_path / "f.json"; p.write_text('{"calibration":null,"bundles":[]}')
     monkeypatch.setattr(m, "FLOW_PATH", p, raising=False)
     assert c.get("/api/recorded-flow").json() == {"calibration": None, "bundles": []}
+
+
+def test_committed_recorded_flow_verifies_and_has_no_salesforce_ids():
+    import re
+    from pathlib import Path
+    from acceptance.dossier import verify_bundle
+    p = Path(__file__).resolve().parents[1] / "web" / "data" / "recorded_flow.json"
+    raw = p.read_text(encoding="utf-8")
+    assert not re.search(r"\b500[A-Za-z0-9]{12}(?:[A-Za-z0-9]{3})?\b", raw)
+    d = json.loads(raw)
+    assert d["calibration"]["detected"] == d["calibration"]["injected"] and d["bundles"]
+    assert all(verify_bundle(b) == [] and b["manifest"]["masked"] for b in d["bundles"])
