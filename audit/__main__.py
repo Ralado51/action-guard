@@ -22,6 +22,21 @@ from .explain import explain
 from .run import AuditBlocked, run_audit
 
 
+def _merge(paths):
+    """Merge claims files. Older files without a `source` get it from the run folder name."""
+    out = {}
+    for p in paths or []:
+        with open(p, encoding="utf-8") as fh:
+            data = json.load(fh)
+        folder = os.path.basename(os.path.dirname(os.path.abspath(p)))
+        guess = "vultr-agent" if folder.startswith("vultr-run") else "agentforce" if folder.startswith("agentforce-run") else ""
+        for k, v in data.items():
+            if isinstance(v, dict) and not v.get("source") and guess:
+                v = {**v, "source": guess}
+            out[k] = v
+    return out or None
+
+
 def main(argv=None, *, transport=None, secret=None) -> int:
     ap = argparse.ArgumentParser(prog="python -m audit")
     sub = ap.add_subparsers(dest="command", required=True)
@@ -33,7 +48,7 @@ def main(argv=None, *, transport=None, secret=None) -> int:
     r.add_argument("--modified-by", help="agent user Id (optional window filter)")
     r.add_argument("--limit", type=int, default=200)
     r.add_argument("--runs-dir", default="runs")
-    r.add_argument("--agent-runs", help="claims.json written by python -m vultr_agent run (adds the agent's own account to each Case)")
+    r.add_argument("--agent-runs", action="append", help="claims.json written by python -m vultr_agent run (adds the agent's own account to each Case)")
     r.add_argument("--list-all", action="store_true", help="list passing Cases too (for a recorded, shareable run)")
     r.add_argument("--explain", action="store_true", help="summary with the Vultr model (counts only)")
     m = sub.add_parser("mask", help="Print a saved report with Salesforce Ids masked (for public display).")
@@ -60,7 +75,7 @@ def main(argv=None, *, transport=None, secret=None) -> int:
         cfg = SalesforceConfig.from_env(env)
         rest = SalesforceRest(cfg, get_token(cfg, http), http)
         report = run_audit(plan, rest, case_ids=ids, since=args.since, modified_by=args.modified_by, limit=args.limit,
-                          agent_runs=json.load(open(args.agent_runs, encoding="utf-8")) if args.agent_runs else None, list_all=args.list_all)
+                          agent_runs=_merge(args.agent_runs), list_all=args.list_all)
         if args.explain:
             explain(report, VultrChatClient(PlannerConfig.from_env(), http))
         path = EvidenceStore(args.runs_dir, report["audit_id"]).save("audit_report", report)

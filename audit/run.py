@@ -92,7 +92,7 @@ def run_audit(plan: dict[str, Any], rest: SalesforceRest, *, case_ids: list[str]
     for c in listed_cases:
         run = runs15.get(key15(c["case_id"]))
         if run:
-            c["agent"] = {"outcome": str(run.get("outcome", ""))[:40], "final_message": run.get("final_message"),
+            c["agent"] = {"source": str(run.get("source", ""))[:40], "outcome": str(run.get("outcome", ""))[:40], "final_message": run.get("final_message"),
                          "steps": [{"at": str(x.get("at", "")), "tool": str(x.get("tool", "")), "result": x.get("result")} for x in (run.get("steps") or [])][:20]}
     coverage = plan.get("rule_coverage")
     limitations = [

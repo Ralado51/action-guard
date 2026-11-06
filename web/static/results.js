@@ -4,6 +4,8 @@ const $ = s => document.querySelector(s);
 const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
 const WORD = { correct: 'Passed all checks', incorrect: 'Failed a check', inconclusive: 'Cannot be confirmed' };
 const CHECK = { passed: 'Passed', failed: 'Failed', inconclusive: 'Not confirmed' };
+const SRC = { 'vultr-agent': 'Vultr agent', agentforce: 'Agentforce agent' };
+const srcName = c => (c.agent && SRC[c.agent.source]) || null;
 let data = null, filter = 'all';
 
 function pct(r) { return r === null || r === undefined ? '—' : (r * 100).toFixed(1).replace(/\.0$/, '') + '%'; }
@@ -52,7 +54,7 @@ function fromReport(r) {
   });
   const sel = r.selection.mode === 'case_ids' ? 'List of Cases reported by the agent' : 'Window of closed Cases';
   const hasAgent = cases.some(c => c.agent);
-  return { synthetic: false, label: hasAgent ? 'Recorded real run: a Vultr-hosted agent acted on synthetic Cases in a Salesforce developer org; Action Guard then audited the records read-only. Salesforce Ids are masked. A small run says little about how often the agent fails.' : null,
+  return { synthetic: false, label: hasAgent ? 'Recorded real run: agents acted on synthetic Cases in a Salesforce developer org; Action Guard then audited the records read-only. The executor of each Case is labeled. Salesforce Ids are masked. Small runs, and the two agents received different instructions: this is not a comparison of quality.' : null,
            agent_reported: t.evaluated, totals: t, outcome_rate: r.outcome_rate, by_check: r.by_check,
            not_auditable: r.not_auditable, limitations: r.limitations.concat(r.collection_errors || []), cases, onlyListed: !r.all_cases_listed, summary: r.summary,
            basis: { plan_version: r.plan_version, plan_hash: r.plan_hash, generated_at: r.generated_at, selection: sel } };
@@ -119,7 +121,7 @@ function records(d) {
     const li = el('li'), a = el('a', 'rec ' + c.status);
     a.href = '#/case/' + c.case_id;
     a.append(el('span', 'dot'), el('span', 'rec-main', c.subject || 'Case ' + c.case_id),
-             el('span', 'rec-find', c.status === 'correct' ? WORD.correct : c.finding.replace(/^(The agent reported success|Reported as closed), but /, '').replace(/^./, m => m.toUpperCase())));
+             el('span', 'rec-find', (srcName(c) ? srcName(c) + ' · ' : '') + (c.status === 'correct' ? WORD.correct : c.finding.replace(/^(The agent reported success|Reported as closed), but /, '').replace(/^./, m => m.toUpperCase()))));
     li.append(a); ul.append(li);
   });
   box.append(ul);
@@ -138,11 +140,24 @@ function basisLine(d) {
   return p;
 }
 
+function executors(d) {
+  const by = {};
+  d.cases.forEach(c => { const n = srcName(c); if (n) { by[n] = by[n] || { n: 0, ok: 0 }; by[n].n++; if (c.status === 'correct') by[n].ok++; } });
+  const names = Object.keys(by).sort();
+  if (names.length < 2) return null;
+  const box = el('section', 'block execs');
+  box.append(el('h2', '', 'Executors in this audit'));
+  names.forEach(n => { const r = el('div', 'exec-row'); r.append(el('b', '', n), el('span', '', by[n].n + ' Cases · ' + by[n].ok + ' passed every auditable check')); box.append(r); });
+  box.append(el('p', 'muted', 'Counts only, by design: the samples are small and the agents were given different instructions. This is not a ranking.'));
+  return box;
+}
+
 function overview(d) {
   const root = $('#results'); root.replaceChildren();
   const t = d.totals, bad = t.incorrect, unc = t.inconclusive;
   const head = el('div', 'verdict');
-  head.append(el('p', 'said', 'Your agent reported ' + d.agent_reported + ' Cases closed.'));
+  const many = new Set(d.cases.map(srcName).filter(Boolean)).size > 1;
+  head.append(el('p', 'said', (many ? 'Your agents reported ' : 'Your agent reported ') + d.agent_reported + ' Cases closed.'));
   head.append(el('h1', '', (t.correct === d.agent_reported ? 'All ' + t.correct : t.correct) + ' passed every auditable check.'));
   const sub = [];
   if (bad) sub.push(bad + ' failed at least one');
@@ -154,6 +169,7 @@ function overview(d) {
   const legend = el('p', 'legend');
   [['correct', 'Passed all checks'], ['incorrect', 'Failed a check'], ['inconclusive', 'Cannot be confirmed']].forEach(([k, t2]) => { const s = el('span', 'key'); s.append(el('i', 'sw ' + k), document.createTextNode(t2)); legend.append(s); });
   root.append(legend);
+  const ex = executors(d); if (ex) root.append(ex);
   if (d.summary && d.summary.text) root.append(el('p', 'summary', d.summary.text));
   const grid = el('div', 'cols'); grid.append(failuresByRule(d), records(d)); root.append(grid);
   const lim = el('details', 'limits'); lim.append(el('summary', '', 'What this audit does not tell you'));
@@ -166,7 +182,7 @@ function detail(id) {
   const idx = data ? data.cases.findIndex(c => c.case_id === id) : -1;
   if (idx < 0) { root.append(el('h1', '', 'Record not found'), el('p', 'muted', 'Open the results first, then choose a record.')); return; }
   const c = data.cases[idx];
-  root.append(el('p', 'said', (c.subject || 'Case') + ' · ' + c.case_id + (data.synthetic ? ' · synthetic' : '')));
+  root.append(el('p', 'said', (c.subject || 'Case') + ' · ' + c.case_id + (srcName(c) ? ' · ' + srcName(c) : '') + (data.synthetic ? ' · synthetic' : '')));
   root.append(el('h1', c.status, c.status === 'correct' ? 'This Case passed every auditable check.' : c.finding));
   if (c.agent_claim || c.status !== 'correct') {
     const two = el('div', 'versus');

@@ -84,7 +84,7 @@ def main(argv=None, *, transport=None, secret=None) -> int:
             tools = SalesforceTools(rest, Guard(frozenset({key15(cid)}), max_writes=3))
             ev = run_agent(client, tools, cid, REASONS[idx % len(REASONS)], model=cfg.model, max_steps=args.max_steps)
             (run_dir / f"{key15(cid)}.json").write_text(json.dumps(ev, indent=2, ensure_ascii=False))
-            claims[cid] = {"outcome": ev["outcome"], "final_message": ev["final_message"],
+            claims[cid] = {"source": "vultr-agent", "outcome": ev["outcome"], "final_message": ev["final_message"],
                            "steps": [{"at": st["at"], "tool": (st.get("request") or {}).get("tool") or ("final" if st.get("final") else st.get("error", "none")),
                                       "result": json.dumps(st["result"])[:300] if "result" in st else None} for st in ev["steps"]]}
             print(f"{cid}: {ev['outcome']} · {len(ev['steps'])} steps · {ev['writes']} writes")
