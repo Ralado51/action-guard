@@ -48,3 +48,16 @@ def test_real_audit_report_carries_expected_and_found_per_check(tmp_path):
     assert empty["status"] == "failed" and empty["found"] == "Empty" and empty["expected"] == "A value is recorded"
     dup = next(k for k in by[ids[1]].values() if k["status"] == "failed")
     assert dup["expected"] == "1 matching Task" and dup["found"] == "2 matching Tasks"
+
+
+def test_audit_can_list_all_cases_and_attach_the_agents_own_account(validator):
+    from tests.test_audit import make_case, rest_for, sim, run_audit, approved_plan
+    fake = sim.FakeSalesforce(); fake.cases.clear()
+    ids = [make_case(fake, 1), make_case(fake, 2, reason=None)]
+    runs = {ids[1][:15]: {"outcome": "finished", "final_message": "Closed it and added the task.",
+                          "steps": [{"at": "2026-11-06T14:00:00Z", "tool": "close_case", "result": "{\"ok\": true}"}]}}
+    r = run_audit(approved_plan(), rest_for(fake), case_ids=ids, list_all=True, agent_runs=runs)
+    assert not list(validator("audit_report").iter_errors(r))
+    assert r["all_cases_listed"] is True and [c["status"] for c in r["cases"]] == ["correct", "incorrect"]
+    assert r["cases"][1]["agent"]["final_message"].startswith("Closed it") and "agent" not in r["cases"][0]
+    assert r["totals"]["correct"] == 1

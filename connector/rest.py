@@ -59,6 +59,17 @@ class SalesforceRest:
             raise QueryError(f"criacao recusada (HTTP {resp.status}): {_first_error(resp.body)}")
         return resp.body["id"]
 
+    def update(self, sobject: str, record_id: str, fields: dict[str, Any]) -> None:
+        """PATCH one record. Never retried here: a timeout may mean the write landed."""
+        url = f"{self.cfg.my_domain}/services/data/v{self.cfg.api_version}/sobjects/{sobject}/{record_id}"
+        try:
+            resp = self.transport.request("PATCH", url, headers={**self._headers(), "Content-Type": "application/json"},
+                                          body=json.dumps(fields).encode(), timeout=self.cfg.rest_timeout_seconds)
+        except TransportError as e:
+            raise QueryError(f"update failed: {e}") from e
+        if resp.status != 204:
+            raise QueryError(f"update refused (HTTP {resp.status}): {_first_error(resp.body)}")
+
 
 def _first_error(body: Any) -> str:
     if isinstance(body, list) and body and isinstance(body[0], dict):

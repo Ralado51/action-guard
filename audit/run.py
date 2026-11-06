@@ -28,7 +28,8 @@ def _now() -> str:
 
 def run_audit(plan: dict[str, Any], rest: SalesforceRest, *, case_ids: list[str] | None = None,
               since: str | None = None, modified_by: str | None = None, limit: int = 200,
-              audit_id: str | None = None, now: Callable[[], str] = _now) -> dict[str, Any]:
+              audit_id: str | None = None, now: Callable[[], str] = _now,
+              agent_runs: dict[str, dict[str, Any]] | None = None, list_all: bool = False) -> dict[str, Any]:
     if not approval_is_valid(plan):
         raise AuditBlocked("The plan must be approved (current hash) to be used in an audit.")
     if bool(case_ids) == bool(since):
@@ -86,7 +87,13 @@ def run_audit(plan: dict[str, Any], rest: SalesforceRest, *, case_ids: list[str]
                      "inconclusive_checks": [r["check_id"] for r in c["results"] if r["status"] == INCONCLUSIVE],
                      "evidence": {r["check_id"]: r["evidence"] for r in c["results"] if r["status"] == FAILED and r["evidence"]},
                      "checks": [check_view(by_id[r["check_id"]], r, c["row"]) for r in c["results"]]}
-                    for c in per_case if c["status"] != CORRECT]
+                    for c in per_case if list_all or c["status"] != CORRECT]
+    runs15 = {key15(k): v for k, v in (agent_runs or {}).items()}
+    for c in listed_cases:
+        run = runs15.get(key15(c["case_id"]))
+        if run:
+            c["agent"] = {"outcome": str(run.get("outcome", ""))[:40], "final_message": run.get("final_message"),
+                         "steps": [{"at": str(x.get("at", "")), "tool": str(x.get("tool", "")), "result": x.get("result")} for x in (run.get("steps") or [])][:20]}
     coverage = plan.get("rule_coverage")
     limitations = [
         "Read-only audit of the FINAL STATE: without the previous state, it does not verify that the owner was preserved or that no unexpected changes occurred.",
@@ -111,7 +118,7 @@ def run_audit(plan: dict[str, Any], rest: SalesforceRest, *, case_ids: list[str]
         "by_check": [{"check_id": cid, "description": desc[cid], "passed": n["passed"], "failed": n["failed"],
                       "inconclusive": n["inconclusive"]} for cid, n in by_check.items()],
         "not_auditable": skipped,
-        "cases": listed_cases[:MAX_LISTED], "cases_truncated": len(listed_cases) > MAX_LISTED,
+        "cases": listed_cases[:MAX_LISTED], "cases_truncated": len(listed_cases) > MAX_LISTED, "all_cases_listed": list_all,
         "collection_errors": errors, "limitations": limitations,
     }
     if coverage:

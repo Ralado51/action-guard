@@ -35,3 +35,4 @@ a.cell{transition:transform .12s}a.cell:hover{transform:translateY(-3px)}
 .ef tr td{color:var(--ink)}.ef tr.failed td.found,.ef tr.failed td.res{color:var(--bad)}.ef tr.passed td.res{color:var(--ok)}.ef tr.inconclusive td.res,.ef tr.inconclusive td.found{color:var(--wait)}
 .basis{margin:4px 0 22px;font-size:13px;color:var(--muted);max-width:820px;overflow-wrap:anywhere}
 .side .miss{margin:0 0 8px}
+.trace{margin:18px 0;font-size:13px;color:var(--muted)}.trace ol{padding-left:20px}.trace li{margin:6px 0;overflow-wrap:anywhere}

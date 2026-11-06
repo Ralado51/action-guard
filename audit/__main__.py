@@ -33,6 +33,8 @@ def main(argv=None, *, transport=None, secret=None) -> int:
     r.add_argument("--modified-by", help="agent user Id (optional window filter)")
     r.add_argument("--limit", type=int, default=200)
     r.add_argument("--runs-dir", default="runs")
+    r.add_argument("--agent-runs", help="claims.json written by python -m vultr_agent run (adds the agent's own account to each Case)")
+    r.add_argument("--list-all", action="store_true", help="list passing Cases too (for a recorded, shareable run)")
     r.add_argument("--explain", action="store_true", help="summary with the Vultr model (counts only)")
     args = ap.parse_args(argv)
     try:
@@ -50,7 +52,8 @@ def main(argv=None, *, transport=None, secret=None) -> int:
         http = transport or UrllibTransport()
         cfg = SalesforceConfig.from_env(env)
         rest = SalesforceRest(cfg, get_token(cfg, http), http)
-        report = run_audit(plan, rest, case_ids=ids, since=args.since, modified_by=args.modified_by, limit=args.limit)
+        report = run_audit(plan, rest, case_ids=ids, since=args.since, modified_by=args.modified_by, limit=args.limit,
+                          agent_runs=json.load(open(args.agent_runs, encoding="utf-8")) if args.agent_runs else None, list_all=args.list_all)
         if args.explain:
             explain(report, VultrChatClient(PlannerConfig.from_env(), http))
         path = EvidenceStore(args.runs_dir, report["audit_id"]).save("audit_report", report)

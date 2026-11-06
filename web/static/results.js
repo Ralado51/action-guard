@@ -21,13 +21,19 @@ function fromReport(r) {
   const cases = r.cases.map(c => {
     const checks = c.checks || [...c.failed_checks.map(x => ({ check_id: x, description: by[x] || x, status: 'failed', expected: '—', found: JSON.stringify((c.evidence || {})[x] ?? '') })),
                                 ...c.inconclusive_checks.map(x => ({ check_id: x, description: by[x] || x, status: 'inconclusive', expected: '—', found: 'Could not be read' }))];
-    const failed = checks.filter(k => k.status === 'failed').map(k => k.description.replace(/\.$/, ''));
-    return { case_id: c.case_id, subject: null, status: c.status, agent_claim: null, checks,
-      finding: c.status === 'incorrect' ? 'Reported as closed, but ' + (failed.length === 1 ? 'a required check failed.' : failed.length + ' required checks failed.') : 'Reported as closed, but the data could not be read well enough to confirm the outcome.' };
+    const nFailed = checks.filter(k => k.status === 'failed').length;
+    const ag = c.agent || null, said = ag && ag.outcome === 'finished';
+    const lead = said ? 'The agent said it was done, but ' : 'Reported as closed, but ';
+    return { case_id: c.case_id, subject: null, status: c.status, agent_claim: said ? ag.final_message : null, agent: ag, checks,
+      finding: c.status === 'correct' ? 'Every auditable check passed.'
+        : c.status === 'incorrect' ? lead + (nFailed === 1 ? 'a required check failed.' : nFailed + ' required checks failed.')
+        : lead + 'the data could not be read well enough to confirm the outcome.' };
   });
   const sel = r.selection.mode === 'case_ids' ? 'List of Cases reported by the agent' : 'Window of closed Cases';
-  return { synthetic: false, label: null, agent_reported: t.evaluated, totals: t, outcome_rate: r.outcome_rate, by_check: r.by_check,
-           not_auditable: r.not_auditable, limitations: r.limitations.concat(r.collection_errors || []), cases, onlyListed: true, summary: r.summary,
+  const hasAgent = cases.some(c => c.agent);
+  return { synthetic: false, label: hasAgent ? 'Recorded real run: a Vultr-hosted agent acted on synthetic Cases in a Salesforce developer org; Action Guard then audited the records read-only.' : null,
+           agent_reported: t.evaluated, totals: t, outcome_rate: r.outcome_rate, by_check: r.by_check,
+           not_auditable: r.not_auditable, limitations: r.limitations.concat(r.collection_errors || []), cases, onlyListed: !r.all_cases_listed, summary: r.summary,
            basis: { plan_version: r.plan_version, plan_hash: r.plan_hash, generated_at: r.generated_at, selection: sel } };
 }
 
@@ -143,7 +149,7 @@ function detail(id) {
   root.append(el('h1', c.status, c.status === 'correct' ? 'This Case passed every auditable check.' : c.finding));
   if (c.agent_claim || c.status !== 'correct') {
     const two = el('div', 'versus');
-    const l = el('div', 'side'); l.append(el('h2', '', 'What the agent said'), el('p', 'quote', c.agent_claim ? '“' + c.agent_claim + '”' : 'No agent response is attached to this audit. The Case was on the list of Cases reported as closed.'));
+    const l = el('div', 'side'); l.append(el('h2', '', 'What the agent said'), el('p', 'quote', c.agent_claim ? '“' + c.agent_claim + '”' : (c.agent ? 'The agent run ended without a final report (' + c.agent.outcome + ').' : 'No agent response is attached to this audit. The Case was on the list of Cases reported as closed.')));
     const r = el('div', 'side ' + c.status); r.append(el('h2', '', 'What the data shows'));
     if (c.status === 'correct') r.append(el('p', '', 'Every auditable check passed.'));
     else if (data.synthetic) r.append(el('p', '', c.finding.replace(/^The agent reported success, but /, '').replace(/^./, m => m.toUpperCase())));
@@ -161,6 +167,11 @@ function detail(id) {
     tb.append(tr);
   });
   tbl.append(tb); root.append(tbl);
+  if (c.agent && c.agent.steps && c.agent.steps.length) {
+    const det = el('details', 'trace'); det.append(el('summary', '', 'What the agent did, step by step (' + c.agent.steps.length + ')'));
+    const ol = el('ol'); c.agent.steps.forEach(x => ol.append(el('li', '', x.at.replace('T', ' ').replace('Z', ' UTC') + ' · ' + x.tool + (x.result ? ' → ' + x.result : ''))));
+    det.append(ol); root.append(det);
+  }
   if (data.not_auditable && data.not_auditable.length) root.append(el('p', 'muted', data.not_auditable.length + ' other checks of the plan need the state before the agent acted, so this audit does not claim them.'));
   const nav = el('div', 'pager');
   if (idx > 0) { const p = el('a', '', 'Previous record'); p.href = '#/case/' + data.cases[idx - 1].case_id; nav.append(p); }
