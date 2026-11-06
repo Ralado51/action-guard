@@ -14,9 +14,11 @@ Repositorio: https://github.com/Ralado51/action-guard (publico). Dados sintetico
 - **Sandbox (PR #5, fora desta base):** material de demonstracao/reavaliacao offline opcional. Isola um avaliador fixo sobre dados produzidos pelo backend; nao isola codigo gerado por LLM e nao sustenta "Blast Radius Zero". Integracao automatica adiada.
 - **Trilha do hackathon:** nao confirmada; conferir o regulamento. Comercializacao e hipotese.
 
+- **Idioma (06/11/2026, branch `feat/english-ui`):** interface, mensagens da API, prompt do planner, relatorios, exemplos de contrato e README passaram para ingles (hackathon internacional). A regra pode ser escrita em ingles ou portugues; as travas de cobertura sao bilingues (12 regras rotuladas em ingles). Docs internos (`STATUS`, `DECISIONS`, `ALINHAMENTO`, `SALESFORCE_*`) e as `description` dos JSON Schemas continuam em portugues; o campo `text_pt`/`rule_text_pt` mantem o nome por compatibilidade.
+
 ## Verificado (com evidencia)
 
-- **377 testes passando** em Python 3.12.3 e 3.13, com Salesforce e Vultr **simulados**. Mutacoes verificadas nas travas novas (normalizacao de Id, reserva por 15 caracteres, Task extra, travas de cobertura).
+- **396 testes passando** em Python 3.12.3 e 3.13, com Salesforce e Vultr **simulados**. Mutacoes verificadas nas travas novas (normalizacao de Id, reserva por 15 caracteres, Task extra, travas de cobertura).
 - Operador, com org real e CLI (registros anteriores a esta branch): plano Vultr com Describe, vinculo de Case, aprovacao por hash, execucao Agentforce, seis verificacoes `passed`; `make docker-test` na VM (197 testes na epoca); fumaca real do planner (deepseek-v4.1-flash-1017, 1 chamada, ~1,4-1,7 mil tokens). Evidencia informada pelo operador, nao reexecutada por mim.
 - Conjunto rotulado de cobertura (`tests/data/rule_coverage_labeled.json`, 20 regras, 33 clausulas): modelo-oraculo simulado acerta 33/33; modelo "otimista" simulado (declara tudo coberto) so produz 2 falsas coberturas, ambas lacunas conhecidas e marcadas `known_gap`.
 
