@@ -9,6 +9,9 @@ COPY connector ./connector
 COPY orchestrator ./orchestrator
 COPY planner ./planner
 COPY audit ./audit
+COPY acceptance ./acceptance
+COPY calibration ./calibration
+COPY vultr_agent ./vultr_agent
 COPY web ./web
 COPY infra/start.py /app/start.py
 RUN useradd --create-home --uid 10001 appuser
