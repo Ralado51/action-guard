@@ -1,65 +1,64 @@
 # Planner (Vultr Serverless Inference)
 
-Regra em portugues -> `test_plan` em **rascunho**. Nao recebe credenciais Salesforce, nao cria Case, nao executa agente e nao aprova plano. Interface interna (nao e contrato publico): `planner.create_plan`, `planner.bind_case`, `planner.ready_for_approval`.
+Rule (English or Portuguese) → **draft** `test_plan`. It receives no Salesforce credentials, creates no Case, runs no agent and approves no plan. Internal interface (not a public contract): `planner.create_plan`, `planner.bind_case`, `planner.ready_for_approval`.
 
-## Entradas
+## Inputs
 
-- `rule`: `contracts/rule.schema.json`, texto ate 4000 caracteres.
-- `metadata_context` (fornecido pelo backend; o planner nao consulta a org):
+- `rule`: `contracts/rule.schema.json`, text up to 4000 characters (the field is named `text_pt` for historical reasons; it accepts English).
+- `metadata_context` (provided by the backend; the planner does not query the org):
   ```json
-  {"source": "salesforce_describe | fixture", "collected_at": "<instante>",
+  {"source": "salesforce_describe | fixture", "collected_at": "<instant>",
    "objects": {"Case": {"readable": true, "fields": {"Status": {"type": "picklist", "readable": true, "values": ["..."]}}}}}
   ```
-  Objeto ou campo ausente, ilegivel ou sem `readable: true` conta como inexistente. Com `source: "fixture"` o resultado traz `metadata_source: "fixture"` e um aviso; nunca e apresentado como metadado real.
-- `action_context`: `{"process": "close_case", "closure_reason", "task_subject", "agent_name"?, "case_id"?}`. `closure_reason` deve ser um dos quatro valores conhecidos **e** existir na picklist do contexto; `case_id`, se vier, vem do backend/operador.
+  A missing or unreadable object or field, or one without `readable: true`, counts as nonexistent. With `source: "fixture"` the result carries `metadata_source: "fixture"` and a warning; it is never presented as real metadata.
+- `action_context`: `{"process": "close_case", "closure_reason", "task_subject", "agent_name"?, "case_id"?}`. `closure_reason` must be one of the four known values **and** exist in the picklist of the context; `case_id`, if present, comes from the backend/operator.
 
-Contexto insuficiente, motivo ausente/desconhecido, motivo da regra diferente do solicitado ou Case invalido geram `insufficient_context` **antes de qualquer chamada ao modelo**. Nao ha escolha silenciosa.
+Insufficient context, a missing or unknown reason, a rule that mentions a different reason from the requested one, or an invalid Case raise `insufficient_context` **before any model call**. There is no silent choice.
 
-## Quem decide o que
+## Who decides what
 
-O modelo propoe somente `monitored`, `async_window` e `checks` (com descricoes). O servidor atribui `plan_id`, `rule_id`, versao, acao (`agentforce_agent_api`), motivo, Subject da Task, precondicoes, `check_id`, `approval = null` e o hash. Chaves extras da resposta (incluindo `approval`, `plan_hash`, `action`) sao descartadas com aviso.
+The model proposes only `monitored`, `async_window` and `checks` (with descriptions, written in English). The server assigns `plan_id`, `rule_id`, version, action (`agentforce_agent_api`), reason, Task Subject, preconditions, `check_id`, `approval = null` and the hash. Extra keys in the response (including `approval`, `plan_hash`, `action`) are dropped with a warning.
 
-Invariantes do MVP (a proposta que omitir, duplicar, contradizer ou ampliar e **rejeitada**, nao corrigida em silencio): Status `Closed`; motivo nao vazio; motivo igual ao solicitado; `OwnerId` inalterado; `record_created` em Task por `WhatId` com `expected_count` 1 e `match.Subject` igual ao solicitado; `no_unexpected_change` com `allowed_changes` exatamente `Case.Status`, `Case.Closure_Reason__c`, `Case.ClosedDate`, `Case.IsClosed`. Ate 4 verificacoes extras, so sobre outros campos do Case.
+MVP invariants (a proposal that omits, duplicates, contradicts or widens them is **rejected**, not silently fixed): Status `Closed`; non-empty reason; reason equal to the requested one; `OwnerId` unchanged; `record_created` on Task by `WhatId` with `expected_count` 1 and `match.Subject` equal to the requested one; `no_unexpected_change` with `allowed_changes` exactly `Case.Status`, `Case.Closure_Reason__c`, `Case.ClosedDate`, `Case.IsClosed`. Up to 4 extra checks, only on other Case fields.
 
-Limites: 10 checks; 25 campos por objeto; objetos somente Case e Task; `max_wait_seconds` <= 120 e no maximo 60 consultas; campos conferidos contra o contexto; valores de picklist conferidos. Depois: JSON Schema de `test_plan` e `validate_plan_semantics`.
+Limits: 10 checks; 25 fields per object; only the Case and Task objects; `max_wait_seconds` <= 120 and at most 60 queries; fields checked against the context; picklist values checked. After that: the `test_plan` JSON Schema and `validate_plan_semantics`.
 
-## Chamadas ao modelo
+## Model calls
 
-`POST {VULTR_INFERENCE_BASE_URL}/chat/completions`, Bearer, `VULTR_INFERENCE_MODEL`, `temperature` 0, `max_tokens` 2000, timeout 60 s. Sem `response_format`: a validacao e local. Usa `choices[0].message.content`; rejeita `finish_reason` diferente de `stop` (inclui `length`), `tool_calls`, conteudo vazio e corpo fora do formato; `reasoning` nao e usado.
+`POST {VULTR_INFERENCE_BASE_URL}/chat/completions`, Bearer, `VULTR_INFERENCE_MODEL`, `temperature` 0, `max_tokens` 2000 by default, timeout 60 s by default. Both limits can be changed with `VULTR_INFERENCE_MAX_TOKENS` (256–32000) and `VULTR_INFERENCE_TIMEOUT_SECONDS` (5–600): reasoning models spend tokens before answering, and with the default budget a plan can be cut off (`finish_reason=length`). No `response_format`: validation is local. It uses `choices[0].message.content`; it rejects a `finish_reason` other than `stop` (including `length`), `tool_calls`, empty content and a malformed body; `reasoning` is not used.
 
-Orcamento total de **2 requisicoes HTTP por operacao**, somando geracao, correcao e retry. 401/403: falha sem retry. Timeout: falha sem retry. 429/5xx: um retry (1 s) se houver orcamento. Se a primeira resposta for rejeitada pelo validador, a segunda chamada reenvia os problemas (correcao); se falhar de novo, erro. Nao ha fallback para fixture ou plano pronto.
+Total budget of **2 HTTP requests per operation**, counting generation, correction and retry. 401/403: failure without retry. Timeout: failure without retry. 429/5xx: one retry (1 s) if budget remains. If the first response is rejected by the validator, the second call resends the problems (correction); if it fails again, an error is raised. There is no fallback to a fixture or a ready-made plan.
 
-Erros (`PlannerError.to_public()`): `config`, `auth`, `timeout`, `rate_limit`, `upstream`, `invalid_response`, `schema`, `semantics`, `insufficient_context`, com mensagem segura e `details` produzidos por este codigo. Corpo bruto, cabecalhos e chave nunca saem.
+Errors (`PlannerError.to_public()`): `config`, `auth`, `timeout`, `rate_limit`, `upstream`, `invalid_response`, `schema`, `semantics`, `insufficient_context`, with a safe message and `details` produced by this code. The raw body, headers and the key never leave.
 
-## Vinculo do Case (decisao)
+## Case binding (decision)
 
-O executor exige `action.input.case_id` dentro do hash aprovado. Fluxo escolhido:
+The executor requires `action.input.case_id` inside the approved hash. Chosen flow:
 
-1. `create_plan` -> rascunho sem `case_id` (ou com ele, se o backend ja o tem) e `approval = null`.
-2. O **backend confiavel** obtem o Case: provisiona um Case sintetico novo (`orchestrator.run.create_synthetic_case`) ou usa um Case de teste fornecido explicitamente pelo operador, como no teste real validado. O LLM nunca participa.
-3. `bind_case(plan, case_id)` grava o ID, incrementa `plan_version`, recalcula o hash e zera a aprovacao.
-4. Revisao humana do plano ja vinculado; aprovacao do hash vigente; `execute_run`.
+1. `create_plan` → a draft without `case_id` (or with it, if the backend already has it) and `approval = null`.
+2. The **trusted backend** obtains the Case: it provisions a new synthetic Case (`orchestrator.run.create_synthetic_case`) or uses a test Case explicitly provided by the operator. The LLM never takes part.
+3. `bind_case(plan, case_id)` writes the Id, increments `plan_version`, recomputes the hash and clears the approval.
+4. Human review of the already-bound plan; approval of the current hash; `execute_run`.
 
-Qualquer alteracao posterior (inclusive trocar o Case ou editar o motivo) muda o hash e invalida a aprovacao. `ready_for_approval(plan)` lista pendencias (por exemplo, falta de `case_id`); mesmo que alguem aprove um rascunho sem Case, `execute_run` bloqueia antes de falar com o agente (teste incluso).
+Any later change (including swapping the Case or editing the reason) changes the hash and invalidates the approval. `ready_for_approval(plan)` lists pending items (for example a missing `case_id`); even if someone approves a draft without a Case, `execute_run` blocks before talking to the agent (covered by a test).
 
-**Pendente de alinhamento com o Gemini (nao alterado aqui):** `docs/API.md` ainda diz que cada execucao cria seu Case e `POST /api/plans` nao recebe `metadata_context`, `action_context` nem Case. Sugestao: `POST /api/plans/{id}/case` (vincula/provisiona e devolve novo plano em rascunho) entre a criacao e a aprovacao, e a interface mostrar o Case no passo de revisao. `web/` nao foi modificado e as rotas continuam 501.
+## Smoke test on the VM (only generates a plan)
 
-## Teste de fumaca na VM (somente gera plano)
-
-Chave no ambiente (`VULTR_INFERENCE_API_KEY`, `VULTR_INFERENCE_MODEL`; nunca no chat):
+Key in the environment (`VULTR_INFERENCE_API_KEY`, `VULTR_INFERENCE_MODEL`; never in chat):
 
 ```bash
 python -m planner --rule contracts/examples/rule.json --fixture-metadata \
   --reason "Resolved - Customer confirmed" --subject "Action Guard - Case closure follow-up"
 ```
-Imprime plano, `plan_hash`, modelo, uso de tokens e origem dos metadados. Com `--fixture-metadata` a origem e `fixture`; para metadados reais, passe `--metadata arquivo.json` gerado pelo backend. Nao ha chamada ao Salesforce nem ao agente.
 
-## Cobertura da regra por clausula
+It prints the plan, `plan_hash`, model, token usage and metadata source. With `--fixture-metadata` the source is `fixture`; for real metadata pass `--metadata file.json` generated by the backend. There is no call to Salesforce or to the agent.
 
-Problema: o usuario pode escrever uma exigencia que nenhuma verificacao cobre e ainda receber um relatorio verde. O plano agora traz `rule_coverage`.
+## Rule coverage per clause
 
-- O **servidor** segmenta a regra em clausulas `cl_01..cl_12` (excedente vira ultima clausula, `not_verifiable`). O modelo recebe as clausulas e devolve `coverage` (clause_id, status, check_ids, reason) na mesma chamada: sem custo extra de chamadas.
-- Status: `covered`, `not_verifiable`, `conflicts_with_policy`. Travas do servidor (`planner/coverage.py`): `covered` exige check_ids existentes e vocabulario da clausula compativel com o tema de algum check citado, senao e rebaixada; temas fora do escopo (e-mail, notificacao, SLA, outros objetos) viram `not_verifiable`; padroes como "nao crie tarefa", "motivo opcional", "proprietario pode mudar" viram `conflicts_with_policy`. O modelo nunca promove.
-- Um `check_id` existente **nao prova** cobertura; por isso o conjunto rotulado e o avaliador: `python -m planner.coverage_eval tests/data/rule_coverage_labeled.json --fixture-metadata` mede `false_covered` (perigoso, deve ser 0), `false_uncovered` e `conflict_missed`. Lacunas conhecidas ficam marcadas `known_gap` no conjunto.
-- A cobertura entra no hash; a aprovacao exige confirmacao por clausula; o relatorio traz `coverage_status` (`complete`/`partial`/`not_assessed`) e, se parcial, a primeira limitacao diz quais clausulas ficaram de fora.
-- Limite: cobertura por vocabulario e uma heuristica finita, nao prova semantica. A confirmacao humana e a barreira final.
+Problem: a user can write a requirement that no check covers and still receive a green report. The plan now carries `rule_coverage`.
+
+- The **server** splits the rule into clauses `cl_01..cl_12` (the excess becomes the last clause, `not_verifiable`). The model receives the clauses and returns `coverage` (clause_id, status, check_ids, reason) in the same call: no extra calls.
+- Statuses: `covered`, `not_verifiable`, `conflicts_with_policy`. Server guards (`planner/coverage.py`): `covered` requires existing check_ids and a clause vocabulary compatible with the topic of at least one cited check, otherwise it is downgraded; topics outside the scope (email, notification, SLA, other objects) become `not_verifiable`; patterns such as "do not create a task", "the reason is optional", "the owner may change" become `conflicts_with_policy`. The model never promotes. The vocabulary is bilingual (English and Portuguese).
+- An existing `check_id` does **not** prove coverage; that is why the labeled set and the evaluator exist: `python -m planner.coverage_eval tests/data/rule_coverage_labeled.json --fixture-metadata` measures `false_covered` (dangerous, must be 0 outside the documented gaps), `false_uncovered` and `conflict_missed`. Known gaps are marked `known_gap` in the set. The set has 20 Portuguese and 12 English rules.
+- Coverage is part of the hash; approval requires a per-clause confirmation; the report carries `coverage_status` (`complete`/`partial`/`not_assessed`) and, when partial, the first limitation says which clauses were left out.
+- Limit: coverage by vocabulary is a finite heuristic, not semantic proof. Human confirmation is the final barrier.
