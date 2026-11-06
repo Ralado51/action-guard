@@ -1,4 +1,4 @@
-"""Avaliacao deterministica do ESTADO FINAL. Sem LLM, sem prosa do agente.
+"""Deterministic evaluation of the FINAL STATE. No LLM, no agent prose.
 
 Sem snapshot "antes", so e possivel afirmar o que depende apenas do estado atual. Verificacoes que
 exigem o antes (campo inalterado, nenhuma mudanca inesperada) ou um valor por registro (motivo
@@ -27,7 +27,7 @@ def classify_checks(plan: dict[str, Any]) -> tuple[list[dict[str, Any]], list[di
         elif kind in ("field_equals", "field_not_empty", "record_created"):
             auditable.append(c)
         else:
-            skipped.append({"check_id": cid, "reason": f"Tipo {kind} is not supported in the audit."})
+            skipped.append({"check_id": cid, "reason": f"Check type {kind} is not supported in the audit."})
     return auditable, skipped
 
 
@@ -83,7 +83,7 @@ def evaluate_case(auditable, primary_object, case_id, case_row, linked, linked_e
             value = case_row[field]
             ok = value == c["expected"] if c["kind"] == "field_equals" else value not in (None, "")
             out.append(_result(c, PASSED if ok else FAILED,
-                               f"{primary_object}.{field}: condicao {'atendida' if ok else 'not met'}.",
+                               f"{primary_object}.{field}: condition {'met' if ok else 'not met'}.",
                                {"observed": value} if not ok else {}))
     return out
 

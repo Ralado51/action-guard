@@ -15,6 +15,7 @@ from connector.config import ConfigError
 from planner.errors import PlannerError
 from .service import Workflow, WorkflowError
 from .mode import demo_mode
+from audit.demo import build_demo
 
 app = FastAPI(title='Action Guard', version='0.2.0')
 
@@ -148,6 +149,12 @@ def require_execution():
 @app.get('/api/capabilities')
 def capabilities():
     return {'demo_mode': demo_mode(), 'execution_enabled': not demo_mode()}
+
+
+@app.get('/api/demo/audit')
+def demo_audit():
+    # Public on purpose: built in memory from invented data; no Salesforce, no token, no model call.
+    return build_demo()
 
 
 @app.post('/api/runs', status_code=202, dependencies=[Depends(authorize), Depends(require_execution)])

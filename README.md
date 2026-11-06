@@ -6,6 +6,10 @@ Action Guard verifies the outcome of an Agentforce agent's action in Salesforce 
 
 Built for the Vultr Agent Rush hackathon (lablab.ai). Single process in this MVP: **closing a Case**.
 
+## See it without credentials
+
+The home screen is a results view: *"Your agent reported 20 Cases closed. 13 met the business rule."* It shows each Case as one cell, which checks failed, and per record what the agent said against what the data shows (expected × found). The default population is **synthetic** (20 invented Cases, labeled as such, no Salesforce connection) but is evaluated by the same deterministic audit engine as real Cases. A real read-only audit can be opened in the same view. Creating the rule and approving the plan live under *Verification setup*.
+
 ## The problem
 
 An agent says "Case closed, follow-up task created". The conversation looks fine, so the team ships it. Nobody checks the records. Agent trust is hard to earn precisely because the agent's own answer is narrative, not evidence.
@@ -36,7 +40,7 @@ before/after snapshots ──► deterministic engine ──► evidence report
 
 Verified:
 
-- 396 automated tests pass (Python 3.12 and 3.13) with Salesforce and Vultr **simulated**. Several safety guards were mutation-checked.
+- 400 automated tests pass (Python 3.12 and 3.13) with Salesforce and Vultr **simulated**. Several safety guards were mutation-checked.
 - Against a real Salesforce developer org (synthetic data only), the operator reported running the full CLI flow once: plan from real Describe metadata, Case binding, hash approval, Agentforce execution, six checks `passed`.
 - Plan generation with the real Vultr model and real Describe metadata works end to end in the web UI. The server correctly downgraded the clause *"Verify the changes using the before and after data"* to **not verified**.
 - Audit mode run on synthetic Cases in the real org (three audited): it reported 1 of 3 records meeting every auditable check, flagged the Case with no follow-up Task (0 found, 1 expected) and the Case with two (2 found, 1 expected), and listed three checks as not auditable.

@@ -1,12 +1,17 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Action Guard · Evidence-based verification</title><link rel="stylesheet" href="/static/style.css"><script src="/static/app.js" defer></script></head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Action Guard · Did the agent get it right?</title><link rel="stylesheet" href="/static/style.css"><script src="/static/app.js" defer></script><script src="/static/results.js" defer></script></head>
 <body>
-<header><a class="brand" href="/">◈ <span>Action Guard</span></a><span class="badge">SALESFORCE + VULTR</span><button id="access" class="quiet">Connect</button></header>
+<header><a class="brand" href="/"><span>Action Guard</span></a><nav class="tabs" aria-label="Views"><a href="#/" id="tab-results">Results</a><a href="#/setup" id="tab-setup">Verification setup</a></nav><button id="access" class="quiet">Connect</button></header>
 <main>
-<p id="demo-banner" role="status">Checking server mode. Execution is unavailable until confirmed.</p>
-<section class="hero"><div class="eyebrow">FROM INTENT TO EVIDENCE</div><h1>One action.<br><em>Every effect, verified.</em></h1><p>Turn a business rule into a plan, approve what will run, and check what actually changed in Salesforce.</p></section>
-<nav aria-label="Steps" id="steps"><span class="active">01 · Rule</span><span>02 · Plan</span><span>03 · Approval</span><span>04 · Evidence</span></nav>
 <div id="notice" role="status" aria-live="polite" hidden></div>
+<section id="view-results" hidden>
+<p class="synthetic-flag" id="synthetic-flag" hidden></p>
+<div id="results"></div>
+</section>
+<section id="view-case" hidden><div id="case-detail"></div></section>
+<section id="view-setup" hidden>
+<div class="setup-intro"><h1>Verification setup</h1><p>Turn a business rule into a plan, approve what will be checked, and bind it to the audit. The results screen measures the agent against this plan.</p><p id="demo-banner" role="status">Checking server mode. Execution is unavailable until confirmed.</p></div>
+<nav aria-label="Steps" id="steps"><span class="active">01 · Rule</span><span>02 · Plan</span><span>03 · Approval</span><span>04 · Evidence</span></nav>
 <div class="workspace">
 <section class="panel" id="rule-panel"><div class="section-label">01 / DEFINE</div><h2>What should happen?</h2><p class="muted">Process: close a synthetic Case and create a follow-up task.</p>
 <form id="rule-form"><label for="rule">Business rule</label><textarea id="rule" rows="5" maxlength="4000" required>When closing a Case, record the given reason, preserve the owner, and create exactly one linked follow-up task. Verify the changes using the before and after data.</textarea><label for="reason">Closure reason</label><select id="reason"><option>Resolved - Customer confirmed</option><option>Resolved - Guidance provided</option><option>Duplicate</option><option>Cancelled</option></select><button class="primary" type="submit" id="generate">Generate plan with Vultr <span>↗</span></button></form>
@@ -17,7 +22,7 @@
 <section class="panel wide" id="approval-panel" hidden><div class="section-label">03 / AUTHORIZE</div><h2>Approve this version</h2><p>This action will close the bound Case and create a Task. Confirm that you reviewed the plan and its scope.</p><form id="approval-form"><label for="actor">Approver</label><input id="actor" maxlength="80" placeholder="Your name" required><div id="ack-list"></div><label class="checkbox"><input id="reviewed" type="checkbox" required>I reviewed the Case, the reason and the checks of this version.</label><button class="primary" type="submit">Approve current version</button></form><button class="danger" id="execute" hidden>Run approved plan once →</button><p class="footnote">If the result is uncertain, review the evidence before trying another action.</p></section>
 <section class="panel wide" id="report-panel" hidden><div class="section-label">04 / CHECK</div><h2 id="result-title">Run in progress</h2><p id="run-state" class="muted"></p><div id="coverage-report"></div><div id="result-list"></div><div id="limitations"></div><button class="secondary" id="download" hidden>Download JSON report</button><button class="quiet" id="refresh-run" hidden>Refresh status</button></section>
 <section class="panel wide" id="audit-panel" hidden><div class="section-label">05 / AUDIT</div><h2>In production: how often did the agent get it right?</h2><p class="muted">Read-only. Uses the approved plan as the rule template and checks the final state of each Case. It runs no action and changes nothing in Salesforce. Checks that need the previous state are not auditable and are listed separately.</p><form id="audit-form"><label for="audit-ids">Cases the agent reported as closed (one ID per line)</label><textarea id="audit-ids" rows="5" spellcheck="false" placeholder="15- or 18-character Record IDs" required></textarea><label class="checkbox"><input id="audit-explain" type="checkbox">Generate a summary with the Vultr model (it receives counts only, never IDs or values)</label><button class="primary" type="submit">Audit Cases (read-only)</button></form><div id="audit-result"></div></section>
-</div><footer>Action Guard <span>Trust backed by evidence.</span></footer>
+</div></section><footer>Action Guard <span>Trust backed by evidence.</span></footer>
 </main>
 <dialog id="access-dialog"><form id="access-form"><h2>Environment access</h2><p class="muted">Enter the application token. Salesforce and Vultr credentials stay on the server.</p><label for="token">Access token</label><input id="token" type="password" autocomplete="off" required><button class="primary" type="submit">Connect</button><button id="close-dialog" class="quiet" type="button">Cancel</button></form></dialog>
 </body></html>
