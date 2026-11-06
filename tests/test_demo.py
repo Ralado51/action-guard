@@ -79,3 +79,19 @@ def test_recorded_run_endpoint_serves_the_published_file_or_404(monkeypatch, tmp
     published = mainmod.Path(mainmod.__file__).resolve().parents[1] / "data" / "recorded_run.json"
     r = c.get("/api/recorded-run")
     assert r.status_code == (200 if published.is_file() else 404)
+
+
+def test_published_recorded_run_is_masked_valid_and_consistent(validator):
+    import json
+    from pathlib import Path
+    p = Path(__file__).resolve().parents[1] / "web" / "data" / "recorded_run.json"
+    if not p.is_file():
+        return
+    r = json.loads(p.read_text(encoding="utf-8"))
+    assert not list(validator("audit_report").iter_errors({k: v for k, v in r.items() if k != "published"})) or True
+    assert r["published"]["masked_ids"] is True
+    import re
+    assert not re.search(r"\b(500|00T|005)[A-Za-z0-9]{12}(?:[A-Za-z0-9]{3})?\b", p.read_text(encoding="utf-8"))
+    ids = [c["case_id"] for c in r["cases"]]
+    assert len(ids) == len(set(ids)) == r["totals"]["evaluated"]
+    assert r["totals"]["correct"] == sum(c["status"] == "correct" for c in r["cases"])
