@@ -62,7 +62,7 @@ function startForm() {
   const f = el('form', 'live-form card');
   f.append(el('h3', '', 'You are the support analyst'));
   const lc = el('label', '', 'Access code'); lc.setAttribute('for', 'live-code');
-  const code = el('input'); code.id = 'live-code'; code.type = 'password'; code.autocomplete = 'off'; code.required = true;
+  const code = el('input'); code.id = 'live-code'; code.name = 'live-access-code'; code.required = true; if (window.AG && AG.maskInput) AG.maskInput(code); else code.type = 'password';
   const sc = el('fieldset'); sc.append(el('legend', '', 'Choose a handled ticket'), el('p', 'muted lg-note', 'Predefined scenarios with synthetic data.'));
   status.scenarios.forEach((s, i) => { const l = el('label', 'opt'); const r = el('input'); r.type = 'radio'; r.name = 'sc'; r.value = s.key; r.checked = i === 0; const sp = el('span'); sp.append(el('b', '', s.title), el('br'), s.text); l.append(r, sp); sc.append(l); });
   const md = el('fieldset'); md.append(el('legend', '', 'What should happen'));

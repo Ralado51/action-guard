@@ -269,8 +269,8 @@ async function route() {
   window.scrollTo(0, 0);
 }
 
-window.AG = { showReal(report) { data = fromReport(report); source = 'live'; filter = 'all'; location.hash = '#/'; route(); },
-              showDemo() { source = null; data = null; filter = 'all'; route(); } };
+window.AG = Object.assign(window.AG || {}, { showReal(report) { data = fromReport(report); source = 'live'; filter = 'all'; location.hash = '#/'; route(); },
+              showDemo() { source = null; data = null; filter = 'all'; route(); } });
 const opBtn = $('#opbtn'), opPanel = $('#oppanel');
 function opSet(open) { opPanel.hidden = !open; opBtn.setAttribute('aria-expanded', String(open)); }
 opBtn.addEventListener('click', () => opSet(opPanel.hidden));
