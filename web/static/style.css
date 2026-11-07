@@ -211,3 +211,4 @@ main{padding:0 32px}#story{padding:16px 0 10px}
 @media(max-width:900px){.dkpis{grid-template-columns:1fr 1fr}.dgrid{grid-template-columns:1fr}.mrow{grid-template-columns:1fr}}
 @media(max-width:700px){.dhead{padding:20px 18px}.dkpis{grid-template-columns:1fr}}
 .dcount{color:var(--muted);font-size:13px;margin-left:8px}.dcol{display:grid;gap:12px;align-content:start}
+.dmini{grid-template-columns:repeat(4,1fr);margin:0 0 12px}.dmini .dk{padding:10px 12px}.dmini .dk b{font-size:24px}.dmini .dk span{font-size:12.5px}@media(max-width:700px){.dmini{grid-template-columns:1fr 1fr}}

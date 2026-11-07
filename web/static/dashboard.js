@@ -10,6 +10,8 @@ const PLAIN = {
 };
 const STAT = { correct: ['Passed', 'ok', '✓'], incorrect: ['Failed', 'bad', '✕'], inconclusive: ['Not confirmed', 'wait', '?'] };
 let cache = null;
+const MODE = { agent: 'Agent run', verifier_test: 'Controlled fault' };
+const VERD = { correct: 'Passed', incorrect: 'Failed', inconclusive: 'Not confirmed' };
 
 async function load() {
   if (cache) return cache;
@@ -17,6 +19,9 @@ async function load() {
   if (!r.ok) throw Error('No recorded run is published.');
   cache = { run: await r.json(), flow: f.ok ? await f.json() : null };
   return cache;
+}
+async function loadLive() {
+  try { const a = await fetch('/api/live/activity', { cache: 'no-store' }); return a.ok ? await a.json() : null; } catch (e) { return null; }
 }
 
 function stackBar(parts, total) {
@@ -109,10 +114,27 @@ function findings(flow) {
   return c;
 }
 
+function liveCard(a) {
+  if (!a) return null;
+  const c = card('Live demo activity', 'Sessions visitors ran on the public demo, kept apart from the recorded run. Synthetic Cases only.');
+  if (!a.sessions) { c.append(el('p', 'dsmall', 'No live sessions yet. Run one from Try it live and it appears here.')); return c; }
+  const strip = el('div', 'dkpis dmini');
+  const add = (n, l) => { const x = el('div', 'dk'); x.append(el('b', '', String(n)), el('span', '', l)); strip.append(x); };
+  add(a.sessions, 'Sessions'); add(a.faults_detected + ' of ' + a.faults_injected, 'Controlled faults detected');
+  add(a.agent_passed + ' of ' + (a.agent_passed + a.agent_failed), 'Agent runs passed'); add(a.fixed, 'Fixed and revalidated');
+  c.append(strip);
+  const t = el('table', 'dtab'); const hr = el('tr'); ['When', 'Type', 'Scenario', 'First check', 'Now'].forEach(h => hr.append(el('th', '', h))); const th = el('thead'); th.append(hr); t.append(th);
+  const tb = el('tbody');
+  a.recent.forEach(x => { const tr = el('tr'); const v = k => k ? el('td', '', VERD[k] || k) : el('td', '', '—'); tr.append(el('td', '', utc(x.at).slice(5, 16)), el('td', '', MODE[x.mode] || x.mode), el('td', '', x.scenario), v(x.first), v(x.last)); tb.append(tr); });
+  t.append(tb); c.append(t);
+  if (a.errors) c.append(el('p', 'dsmall', a.errors + ' session(s) ended with an error before a check.'));
+  return c;
+}
+
 function history(run, flow) {
   const rows = [];
   if (flow && flow.calibration) rows.push([flow.calibration.audited_at, 'Calibration audit', flow.calibration.cases.length + ' Cases', flow.calibration.detected + ' of ' + flow.calibration.injected + ' faults detected']);
-  if (flow) flow.bundles.forEach(b => Object.entries(b.files).forEach(([k, r]) => { if (k.startsWith('report:') && r.generated_at && r.audit_id !== (flow.calibration && flow.calibration.audit_id)) rows.push([r.generated_at, 'Revalidation after fix', (r.totals ? r.totals.evaluated : 1) + (r.totals && r.totals.evaluated !== 1 ? ' Cases' : ' Case'), r.totals ? r.totals.correct + ' passed · ' + r.totals.incorrect + ' failed' : '']); }));
+  if (flow) flow.bundles.forEach(b => Object.entries(b.files).forEach(([k, r]) => { if (k.startsWith('report:') && r.generated_at && r.audit_id !== (flow.calibration && flow.calibration.audit_id)) rows.push([r.generated_at, 'Re-audit for a finding', (r.totals ? r.totals.evaluated : 1) + (r.totals && r.totals.evaluated !== 1 ? ' Cases' : ' Case'), r.totals ? r.totals.correct + ' passed · ' + r.totals.incorrect + ' failed' : '']); }));
   rows.push([run.generated_at, 'Recorded agent run', run.totals.evaluated + ' Cases', run.totals.correct + ' passed the verified checks']);
   rows.sort((a, b) => Date.parse(a[0]) - Date.parse(b[0]));
   const c = card('Audit history', 'Each audit is read-only and bound to the same approved plan.');
@@ -126,13 +148,13 @@ async function show() {
   const root = $('#dashboard'); root.replaceChildren();
   const ld = el('p', 'loading', 'Loading dashboard…'); ld.setAttribute('role', 'status'); root.append(ld);
   let d;
-  try { d = await load(); } catch (e) { const b = el('button', 'secondary', 'Try again'); b.type = 'button'; b.onclick = show; const m = el('div', 'loaderr'); m.append(el('p', '', 'Could not load the dashboard. ' + e.message), b); root.replaceChildren(m); return; }
+  try { d = await load(); d.live = await loadLive(); } catch (e) { const b = el('button', 'secondary', 'Try again'); b.type = 'button'; b.onclick = show; const m = el('div', 'loaderr'); m.append(el('p', '', 'Could not load the dashboard. ' + e.message), b); root.replaceChildren(m); return; }
   root.replaceChildren();
   const head = el('div', 'dhead'); head.append(el('h1', '', 'Dashboard'), el('p', '', 'The recorded evidence at a glance: what was checked, what was found, and what is still not verified.'));
   root.append(head, kpis(d.run, d.flow));
   const g = el('div', 'dgrid'), l = el('div', 'dcol'), r = el('div', 'dcol');
   [byExecutor(d.run), calibration(d.flow), findings(d.flow)].forEach(x => { if (x) l.append(x); });
-  [coverage(d.run, d.flow), history(d.run, d.flow)].forEach(x => { if (x) r.append(x); });
+  [coverage(d.run, d.flow), liveCard(d.live), history(d.run, d.flow)].forEach(x => { if (x) r.append(x); });
   g.append(l, r);
   root.append(g, el('p', 'dsmall dfoot', 'Recorded run in a Salesforce developer org, synthetic Cases only, Salesforce Ids masked.'));
 }

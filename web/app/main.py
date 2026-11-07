@@ -120,6 +120,11 @@ def live_status(demo=Depends(live_demo)):
     return demo.status()
 
 
+@app.get('/api/live/activity')
+def live_activity(demo=Depends(live_demo)):
+    return demo.activity()
+
+
 @app.post('/api/live/sessions', status_code=201)
 def live_create(body: LiveCreate, demo=Depends(live_demo)):
     return live_call(demo.create, body.code, body.scenario, body.mode)
