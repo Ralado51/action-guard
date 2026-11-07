@@ -1,12 +1,13 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Action Guard · Did the agent get it right?</title><link rel="stylesheet" href="/static/style.css"><script src="/static/app.js" defer></script><script src="/static/results.js" defer></script><script src="/static/acceptance.js" defer></script><script src="/static/story.js" defer></script><script src="/static/live.js" defer></script></head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Action Guard · Did the agent get it right?</title><link rel="stylesheet" href="/static/style.css"><script src="/static/app.js" defer></script><script src="/static/results.js" defer></script><script src="/static/acceptance.js" defer></script><script src="/static/story.js" defer></script><script src="/static/live.js" defer></script><script src="/static/dashboard.js" defer></script></head>
 <body>
 <div class="announce">Built for Vultr Agent Rush · Synthetic Salesforce data only · <b>Nothing here touches real customers</b></div>
-<header><a class="brand" href="/"><span>Action Guard</span></a><nav class="tabs" aria-label="Views"><a href="#/story" id="tab-story">Overview</a><a href="#/live" id="tab-live">Try it live</a><a href="#/" id="tab-results">Results</a><a href="#/acceptance" id="tab-acceptance">Findings</a></nav><div class="opmenu"><button type="button" id="opbtn" class="opbtn" aria-expanded="false" aria-controls="oppanel" aria-haspopup="true">Operator</button><div id="oppanel" role="group" aria-label="Operator tools" hidden><a href="#/setup" id="tab-setup" aria-label="Verification setup">Verification setup</a><button id="access" class="quiet" type="button" aria-label="Operator sign-in">Operator sign-in</button></div></div></header>
+<header><a class="brand" href="/"><span>Action Guard</span></a><nav class="tabs" aria-label="Views"><a href="#/story" id="tab-story">Overview</a><a href="#/live" id="tab-live">Try it live</a><a href="#/dashboard" id="tab-dashboard">Dashboard</a><a href="#/" id="tab-results">Results</a><a href="#/acceptance" id="tab-acceptance">Findings</a></nav><div class="opmenu"><button type="button" id="opbtn" class="opbtn" aria-expanded="false" aria-controls="oppanel" aria-haspopup="true">Operator</button><div id="oppanel" role="group" aria-label="Operator tools" hidden><a href="#/setup" id="tab-setup" aria-label="Verification setup">Verification setup</a><button id="access" class="quiet" type="button" aria-label="Operator sign-in">Operator sign-in</button></div></div></header>
 <main>
 <div id="notice" role="status" aria-live="polite" hidden></div>
 <section id="view-story" hidden><div id="story"></div></section>
 <section id="view-live" hidden><div id="live"></div></section>
+<section id="view-dashboard" hidden><div id="dashboard"></div></section>
 <section id="view-results" hidden>
 <div id="source-switch" class="switch" role="group" aria-label="Data source" hidden></div>
 <p class="synthetic-flag" id="synthetic-flag" hidden></p>
