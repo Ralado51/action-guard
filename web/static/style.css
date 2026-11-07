@@ -218,3 +218,16 @@ a.dk{color:inherit;text-decoration:none;display:block}a.dk:hover,a.dk:focus-visi
 .dupd{display:flex;align-items:center;gap:12px;margin-top:12px;color:#b8b8b8;font-size:13px}.dupd button{padding:4px 12px;font-size:13px}
 .dgrid2{margin-top:12px}.dlink{font-weight:700;color:#262626;text-decoration:underline;text-underline-offset:3px}.dsub{display:block;color:var(--muted);font-size:12px;margin-top:2px}
 .finding.target{outline:3px solid #fff56b;outline-offset:3px}
+
+/* ---- agent replay ---- */
+.rp{margin:10px 0 4px}.rp-note{font-size:12.5px;color:var(--muted);margin:0 0 10px}.rp-stage{display:grid;grid-template-columns:150px 1fr 260px;align-items:center;gap:0}
+.rp-agent{background:#262626;color:#fff;border-radius:14px;padding:14px 16px;display:grid;gap:2px}.rp-agent span{color:#b8b8b8;font-size:12.5px}
+.rp-wire{position:relative;height:2px;background:repeating-linear-gradient(90deg,#c9c6bb 0 6px,transparent 6px 12px);margin:0 6px}.rp-dot{position:absolute;top:-5px;left:0;width:12px;height:12px;border-radius:50%;background:#fff56b;border:2px solid #262626;opacity:0}
+.rp-wire.w .rp-dot{animation:rpgo 650ms ease-in-out forwards}.rp-wire.r .rp-dot{animation:rpback 650ms ease-in-out forwards}
+@keyframes rpgo{0%{left:0;opacity:1}85%{opacity:1}100%{left:calc(100% - 12px);opacity:0}}@keyframes rpback{0%{left:calc(100% - 12px);opacity:1}85%{opacity:1}100%{left:0;opacity:0}}
+.rp-case{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:grid;gap:8px;transition:box-shadow .3s}.rp-case.flash{animation:rpflash 900ms ease-out}@keyframes rpflash{0%{box-shadow:0 0 0 4px #fff56b}100%{box-shadow:0 0 0 0 #fff56b}}
+.rp-row{display:flex;justify-content:space-between;gap:12px;font-size:13.5px;border-top:1px solid var(--line);padding-top:6px}.rp-row span{color:var(--muted)}.rp-row b.closed{color:#17766b}.rp-row b.missing{color:#b4372c}
+.rp-log{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:6px;font-size:13.5px}.rp-log li{display:flex;gap:10px;align-items:baseline;animation:rpin .35s ease-out}.rp-log i{font-style:normal;font-weight:700;background:#262626;color:#fff;border-radius:50%;min-width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px}
+@keyframes rpin{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}.rp-bar{display:flex;gap:8px;margin-top:8px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media(max-width:700px){.rp-stage{grid-template-columns:1fr}.rp-wire{height:30px;width:2px;margin:6px 24px;background:repeating-linear-gradient(180deg,#c9c6bb 0 6px,transparent 6px 12px)}.rp-dot{left:-5px!important;top:0}.rp-wire.w .rp-dot{animation:rpdown 650ms forwards}.rp-wire.r .rp-dot{animation:rpup 650ms forwards}@keyframes rpdown{0%{top:0;opacity:1}85%{opacity:1}100%{top:calc(100% - 12px);opacity:0}}@keyframes rpup{0%{top:calc(100% - 12px);opacity:1}85%{opacity:1}100%{top:0;opacity:0}}}
