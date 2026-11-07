@@ -64,7 +64,7 @@ const ICON = {
   check: '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5"/><path d="M5.5 8l2 2 3.5-4"/></svg>',
 };
 function chip(cls, icon, text, x, y, w) {
-  const c = el('div', 'dn ' + cls); c.style.cssText = 'left:' + (x / 10) + '%;top:' + (y / 4.7) + '%;width:' + (w / 10) + '%';
+  const c = el('div', 'dn ' + cls); c.style.cssText = 'left:' + (x / 10) + '%;top:' + (y / 3.3) + '%;width:' + (w / 10) + '%';
   const i = el('span', 'ic'); i.innerHTML = ICON[icon]; c.append(i, el('span', '', text)); return c;
 }
 const SHORT = { chk_status_closed: 'Case closed', chk_reason_filled: 'Closure reason', chk_followup_task: 'One follow-up Task' };
@@ -72,20 +72,20 @@ function diagram() {
   const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const root = el('div', 'diag'); root.setAttribute('role', 'img');
   root.setAttribute('aria-label', 'Animated: the approved rule and the Salesforce record go through a read-only audit, a decision, and a fix with a second audit. The outputs are an evidence dossier, a findings log and a decision.');
-  const NX = [200, 420, 640], NY = 190;
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 1000 470'); svg.setAttribute('class', 'wires');
+  const NX = [200, 420, 640], NY = 80;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 1000 330'); svg.setAttribute('class', 'wires');
   const line = (d, cls) => { const p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); p.setAttribute('d', d); p.setAttribute('class', cls); svg.append(p); return p; };
-  [152, 192, 232].forEach(y => line('M150 ' + (y + 17) + 'H175V' + (NY + 20) + 'H200', 'w base'));
-  line('M390 210H420', 'w base'); line('M610 210H640', 'w base'); [152, 192, 232].forEach(y => line('M830 210H838V' + (y + 17) + 'H848', 'w base'));
-  line('M390 210H420', 'w hot h1'); line('M610 210H640', 'w hot h2'); [152, 192, 232].forEach(y => line('M830 210H838V' + (y + 17) + 'H848', 'w hot h3'));
-  NX.forEach((x, i) => { line('M' + x + ' 48V' + NY, 'w dot'); line('M' + x + ' ' + (NY + 40) + 'V268', 'w dot dn' + i); });
+  [42, 82, 122].forEach(y => line('M150 ' + (y + 17) + 'H175V' + (NY + 20) + 'H200', 'w base'));
+  line('M390 100H420', 'w base'); line('M610 100H640', 'w base'); [42, 82, 122].forEach(y => line('M830 100H838V' + (y + 17) + 'H848', 'w base'));
+  line('M390 100H420', 'w hot h1'); line('M610 100H640', 'w hot h2'); [42, 82, 122].forEach(y => line('M830 100H838V' + (y + 17) + 'H848', 'w hot h3'));
+  NX.forEach((x, i) => { line('M' + x + ' 48V' + NY, 'w dot'); line('M' + x + ' ' + (NY + 40) + 'V158', 'w dot dn' + i); });
   root.append(svg);
-  [['sheet', 'Approved rule', 152], ['db', 'Salesforce record', 192], ['chat', 'Agent’s report', 232]].forEach(([ic, t, y]) => root.append(chip('src', ic, t, 10, y, 140)));
+  [['sheet', 'Approved rule', 42], ['db', 'Salesforce record', 82], ['chat', 'Agent’s report', 122]].forEach(([ic, t, y]) => root.append(chip('src', ic, t, 10, y, 140)));
   const nodes = [['search', 'Read-only audit'], ['scale', 'Decision'], ['wrench', 'Fix and re-check']].map(([ic, t], i) => { const n = chip('node n' + i, ic, t, NX[i], NY, 190); root.append(n); return n; });
-  const outs = [['file', 'Evidence dossier', 'o-blue', 152], ['list', 'Findings log', 'o-tan', 192], ['check', 'Decision', 'o-green', 232]].map(([ic, t, c, y]) => { const o = chip('out ' + c, ic, t, 848, y, 150); root.append(o); return o; });
+  const outs = [['file', 'Evidence dossier', 'o-blue', 42], ['list', 'Findings log', 'o-tan', 82], ['check', 'Decision', 'o-green', 122]].map(([ic, t, c, y]) => { const o = chip('out ' + c, ic, t, 848, y, 150); root.append(o); return o; });
   const metrics = ['3 conditions checked on the real record', '1 required condition not met: result not accepted', 'A finding closes only after a second audit'];
-  const mets = metrics.map((t, i) => { const m = el('div', 'metric m' + i, t); m.style.cssText = 'left:' + ((NX[i] + 8) / 10) + '%;top:' + (8 / 4.7) + '%;width:' + 19 + '%'; root.append(m); return m; });
-  const card = (i, build) => { const c = el('div', 'dcard c' + i); c.style.cssText = 'left:' + (NX[i] / 10) + '%;top:' + (268 / 4.7) + '%;width:' + (205 / 10) + '%'; build(c); root.append(c); return c; };
+  const mets = metrics.map((t, i) => { const m = el('div', 'metric m' + i, t); m.style.cssText = 'left:' + ((NX[i] + 8) / 10) + '%;top:' + (2 / 3.3) + '%;width:' + 19 + '%'; root.append(m); return m; });
+  const card = (i, build) => { const c = el('div', 'dcard c' + i); c.style.cssText = 'left:' + (NX[i] / 10) + '%;top:' + (158 / 3.3) + '%;width:' + (205 / 10) + '%'; build(c); root.append(c); return c; };
   const rows = r => { const u = el('div', 'dl'); r.checks.forEach(c => { const l = el('div'); l.append(el('b', c.status === 'passed' ? 'ok' : 'no', c.status === 'passed' ? 'MET ' : 'NOT MET '), document.createTextNode(SHORT[c.check_id] || c.description)); u.append(l); }); return u; };
   const cards = [
     card(0, c => { c.append(el('div', 'dh', 'Case record'), rows(S.bad)); }),

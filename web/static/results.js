@@ -6,7 +6,7 @@ const WORD = { correct: 'Passed all checks', incorrect: 'Failed a check', inconc
 const CHECK = { passed: 'Passed', failed: 'Failed', inconclusive: 'Not confirmed' };
 const SRC = { 'vultr-agent': 'Vultr agent', agentforce: 'Agentforce agent' };
 const srcName = c => (c.agent && SRC[c.agent.source]) || null;
-let data = null, filter = 'all';
+let data = null, filter = 'all', recQuery = '', recLimit = 15; const REC_PAGE = 15;
 
 function pct(r) { return r === null || r === undefined ? '—' : (r * 100).toFixed(1).replace(/\.0$/, '') + '%'; }
 
@@ -33,7 +33,7 @@ function drawSwitch() {
   if (box.hidden) return;
   [['real', 'Recorded real run'], ['demo', 'Synthetic demonstration']].forEach(([k, t]) => {
     const b = el('button', 'chip' + (source === k ? ' on' : ''), t); b.type = 'button'; b.setAttribute('aria-pressed', source === k);
-    b.onclick = () => { source = k; filter = 'all'; location.hash = '#/'; route(); };
+    b.onclick = () => { source = k; filter = 'all'; recQuery = ''; recLimit = REC_PAGE; location.hash = '#/'; route(); };
     box.append(b);
   });
 }
@@ -61,12 +61,12 @@ function fromReport(r) {
 }
 
 function strip(d) {
-  const list = el('ol', 'strip');
+  const list = el('ol', 'strip' + (d.cases.length > 60 ? ' dense' : ''));
   list.setAttribute('aria-label', 'One cell per Case the agent reported');
   const shown = d.cases.slice();
   const anon = d.onlyListed ? d.totals.correct : 0;
   shown.forEach((c, i) => {
-    const li = el('li'), a = el(c.case_id ? 'a' : 'span', 'cell ' + c.status, String(d.onlyListed ? '' : i + 1));
+    const li = el('li'), a = el(c.case_id ? 'a' : 'span', 'cell ' + c.status, String(d.onlyListed || d.cases.length > 60 ? '' : i + 1));
     a.href = '#/case/' + c.case_id; a.title = WORD[c.status]; a.setAttribute('aria-label', 'Case ' + (i + 1) + ': ' + WORD[c.status]);
     li.append(a); list.append(li);
   });
@@ -109,21 +109,30 @@ function records(d) {
     const n = k === 'all' ? d.cases.length : d.cases.filter(c => c.status === k).length;
     const b = el('button', 'chip' + (filter === k ? ' on' : ''), t + ' · ' + n);
     b.type = 'button'; b.setAttribute('aria-pressed', filter === k);
-    b.onclick = () => { filter = k; render(); };
+    b.onclick = () => { filter = k; recLimit = REC_PAGE; render(); };
     bar.append(b);
   });
   box.append(bar);
+  const q = el('input', 'rec-search'); q.type = 'search'; q.placeholder = 'Search Case or executor'; q.value = recQuery; q.setAttribute('aria-label', 'Search records');
+  q.oninput = () => { recQuery = q.value; recLimit = REC_PAGE; clearTimeout(q._t); q._t = setTimeout(() => { render(); const n = document.querySelector('.rec-search'); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } }, 200); };
+  box.append(q);
   const ul = el('ul', 'recs');
   const rank = { incorrect: 0, inconclusive: 1, correct: 2 };
-  const view = d.cases.map((c, i) => [c, i]).filter(([c]) => filter === 'all' || c.status === filter).sort((x, y) => rank[x[0].status] - rank[y[0].status] || x[1] - y[1]);
+  const needle = recQuery.trim().toLowerCase();
+  const text = c => ((c.subject || '') + ' ' + c.case_id + ' ' + (srcName(c) || '')).toLowerCase();
+  const view = d.cases.map((c, i) => [c, i]).filter(([c]) => (filter === 'all' || c.status === filter) && (!needle || text(c).includes(needle))).sort((x, y) => rank[x[0].status] - rank[y[0].status] || x[1] - y[1]);
   if (!view.length) ul.append(el('li', 'empty', 'No records in this group.'));
-  view.forEach(([c, i]) => {
+  view.slice(0, recLimit).forEach(([c, i]) => {
     const li = el('li'), a = el('a', 'rec ' + c.status);
     a.href = '#/case/' + c.case_id;
-    a.append(el('span', 'dot'), el('span', 'rec-main', c.subject || 'Case ' + c.case_id),
-             el('span', 'rec-find', (srcName(c) ? srcName(c) + ' · ' : '') + (c.status === 'correct' ? WORD.correct : c.finding.replace(/^(The agent reported success|Reported as closed), but /, '').replace(/^./, m => m.toUpperCase()))));
+    a.append(el('span', 'dot'), el('span', 'rec-main', c.subject || 'Case ' + c.case_id), el('span', 'rec-src', srcName(c) || ''),
+             el('span', 'rec-find', c.status === 'correct' ? WORD.correct : c.finding.replace(/^(The agent reported success|Reported as closed), but /, '').replace(/^./, m => m.toUpperCase())));
     li.append(a); ul.append(li);
   });
+  if (view.length > recLimit) {
+    const li = el('li', 'more'); const m = el('button', 'quiet', 'Show ' + Math.min(REC_PAGE, view.length - recLimit) + ' more · showing ' + recLimit + ' of ' + view.length);
+    m.type = 'button'; m.onclick = () => { recLimit += REC_PAGE; render(); }; li.append(m); ul.append(li);
+  } else if (view.length > REC_PAGE) ul.append(el('li', 'more muted', 'Showing all ' + view.length));
   box.append(ul);
   if (d.onlyListed) box.append(el('p', 'muted', 'Only records that failed or could not be confirmed are listed; the other ' + d.totals.correct + ' met every auditable check.'));
   return box;
