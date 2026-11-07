@@ -17,6 +17,7 @@ from .service import Workflow, WorkflowError
 from .mode import demo_mode
 from audit.demo import build_demo
 from .live import LiveDemo, LiveError
+from .operators import OperatorError, OperatorRegistry
 
 app = FastAPI(title='Action Guard', version='0.2.0')
 
@@ -36,12 +37,29 @@ def workflow():
     return Workflow()
 
 
-def authorize(authorization: str = Header(default='')):
+@lru_cache
+def operator_registry():
+    return OperatorRegistry(os.environ.get('ACTION_GUARD_DATA_DIR', 'runs/web') + '/operators')
+
+
+def authorize(authorization: str = Header(default=''), reg=Depends(operator_registry)):
+    """Returns the caller: {'role': 'admin'} for the shared token, or the registered operator record for a personal key."""
     token = os.environ.get('ACTION_GUARD_API_TOKEN', '')
     if not token:
         raise HTTPException(503, 'Configure ACTION_GUARD_API_TOKEN no servidor.')
-    if not hmac.compare_digest(authorization.encode('utf-8', 'replace'), ('Bearer ' + token).encode('utf-8')):
-        raise HTTPException(401, 'Invalid access token.')
+    if hmac.compare_digest(authorization.encode('utf-8', 'replace'), ('Bearer ' + token).encode('utf-8')):
+        return {'role': 'admin', 'name': None}
+    if authorization.startswith('Bearer '):
+        op = reg.lookup(authorization[7:].strip())
+        if op:
+            return op
+    raise HTTPException(401, 'Invalid access token.')
+
+
+def require_admin(who=Depends(authorize)):
+    if who.get('role') != 'admin':
+        raise HTTPException(403, 'Only the administrator token can manage operators.')
+    return who
 
 
 def invoke(fn, *args):
@@ -193,8 +211,45 @@ def bind(plan_id: str, body: BindCaseRequest, svc=Depends(workflow)):
 
 
 @app.post('/api/plans/{plan_id}/approve', dependencies=[Depends(authorize)])
-def approve(plan_id: str, body: ApprovePlanRequest, svc=Depends(workflow)):
-    return invoke(svc.approve, plan_id, body.approved_plan_hash, body.approved_by, body.acknowledged_clauses)
+def approve(plan_id: str, body: ApprovePlanRequest, svc=Depends(workflow), who=Depends(authorize)):
+    # A registered operator's name comes from the server, not from the request body.
+    actor = who['name'] if who.get('name') else body.approved_by
+    return invoke(svc.approve, plan_id, body.approved_plan_hash, actor, body.acknowledged_clauses)
+
+
+class OperatorCreate(Body):
+    name: str = Field(min_length=2, max_length=60)
+    role: Literal['operator', 'reviewer'] = 'operator'
+
+
+def op_call(fn, *args):
+    try:
+        return fn(*args)
+    except OperatorError as e:
+        raise HTTPException(e.code, e.message)
+
+
+@app.get('/api/operators')
+def operators_list(reg=Depends(operator_registry)):
+    # Public on purpose: names, roles and dates only. Never keys or hashes.
+    return {'operators': reg.list_public(), 'max': 25}
+
+
+@app.get('/api/operators/me')
+def operators_me(who=Depends(authorize)):
+    return {'role': who.get('role'), 'name': who.get('name'), 'id': who.get('id')}
+
+
+@app.post('/api/operators', status_code=201, dependencies=[Depends(require_admin)])
+def operators_create(body: OperatorCreate, reg=Depends(operator_registry)):
+    op, key = op_call(reg.create, body.name, body.role)
+    return {'operator': op, 'key': key, 'note': 'Shown once. Only its hash is stored.'}
+
+
+@app.delete('/api/operators/{oid}', dependencies=[Depends(require_admin)])
+def operators_revoke(oid: str, reg=Depends(operator_registry)):
+    op_call(reg.revoke, oid)
+    return {'revoked': oid}
 
 
 def require_execution():

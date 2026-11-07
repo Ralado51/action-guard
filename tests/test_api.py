@@ -173,3 +173,20 @@ def test_plan_without_approval_cannot_run(setup):
 def test_invalid_bodies(setup,url,body):
     client,*_=setup
     assert client.post(url,json=body).status_code==422
+
+
+def test_registered_operator_name_is_set_by_the_server(setup, tmp_path):
+    client, svc, fake, calls = setup
+    from web.app import main as m
+    from web.app.operators import OperatorRegistry
+    reg = OperatorRegistry(tmp_path / 'ops')
+    m.app.dependency_overrides[m.operator_registry] = lambda: reg
+    try:
+        _, key = reg.create('Maria Silva', 'operator')
+        p = bind(client, create(client))
+        r = client.post('/api/plans/'+p['plan_id']+'/approve', headers={'Authorization': 'Bearer ' + key},
+                        json={'approved_by': 'Someone Else', 'approved_plan_hash': p['plan_hash']})
+        assert r.status_code == 200
+        assert svc.get(p['plan_id'])['approval']['approved_by'] == 'Maria Silva'
+    finally:
+        m.app.dependency_overrides.pop(m.operator_registry, None)

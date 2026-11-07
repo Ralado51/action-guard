@@ -43,7 +43,7 @@ function kpis(run, flow) {
   add(String(t.evaluated), 'Cases verified', t.correct + ' passed the verified checks', '#/', 'From the agent run · open the Cases');
   add(String(t.incorrect + t.inconclusive), 'Divergences or not confirmed', t.incorrect + ' failed · ' + t.inconclusive + ' not confirmed', (t.incorrect + t.inconclusive) ? '#/?f=' + (t.incorrect ? 'incorrect' : 'inconclusive') : '#/', 'From the agent run · open the Cases');
   const nObs = run.by_check.length, nNot = (run.not_auditable || []).length;
-  add(nObs + ' of ' + (nObs + nNot), 'Plan conditions verified', nNot + ' declared as gaps', '#/setup', 'From the approved plan · see the setup');
+  add(nObs + ' of ' + (nObs + nNot), 'Plan conditions verified', nNot + ' declared as gaps', '#/acceptance', 'From the approved plan · see the conditions');
   if (flow && flow.bundles) {
     const st = { open: 0, closed: 0, risk: 0 };
     flow.bundles.forEach(b => { const s = b.files.finding.state; if (s === 'closed') st.closed++; else if (s === 'risk_accepted') st.risk++; else st.open++; });
