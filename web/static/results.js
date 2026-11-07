@@ -2,7 +2,7 @@
 (() => {
 const $ = s => document.querySelector(s);
 const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
-const WORD = { correct: 'Passed all checks', incorrect: 'Failed a check', inconclusive: 'Cannot be confirmed' };
+const WORD = { correct: 'Passed verified checks', incorrect: 'Failed a check', inconclusive: 'Cannot be confirmed' };
 const CHECK = { passed: 'Passed', failed: 'Failed', inconclusive: 'Not confirmed' };
 const SRC = { 'vultr-agent': 'Vultr agent', agentforce: 'Agentforce agent' };
 const srcName = c => (c.agent && SRC[c.agent.source]) || null;
@@ -104,7 +104,7 @@ function records(d) {
   const box = el('section', 'block');
   box.append(el('h2', '', 'Records'));
   const bar = el('div', 'filters');
-  [['all', 'All'], ['incorrect', 'Failed a check'], ['inconclusive', 'Cannot be confirmed'], ['correct', 'Passed all checks']].forEach(([k, t]) => {
+  [['all', 'All'], ['incorrect', 'Failed a check'], ['inconclusive', 'Cannot be confirmed'], ['correct', 'Passed verified checks']].forEach(([k, t]) => {
     if (d.onlyListed && k === 'correct') return;
     const n = k === 'all' ? d.cases.length : d.cases.filter(c => c.status === k).length;
     const b = el('button', 'chip' + (filter === k ? ' on' : ''), t + ' · ' + n);
@@ -156,7 +156,7 @@ function executors(d) {
   if (names.length < 2) return null;
   const box = el('section', 'block execs');
   box.append(el('h2', '', 'Executors in this audit'));
-  names.forEach(n => { const r = el('div', 'exec-row'); r.append(el('b', '', n), el('span', '', by[n].n + ' Cases · ' + by[n].ok + ' passed every auditable check')); box.append(r); });
+  names.forEach(n => { const r = el('div', 'exec-row'); r.append(el('b', '', n), el('span', '', by[n].n + ' Cases · ' + by[n].ok + ' passed')); box.append(r); });
   box.append(el('p', 'muted', 'Counts only, by design: the samples are small and the agents were given different instructions. This is not a ranking.'));
   return box;
 }
@@ -167,11 +167,11 @@ function overview(d) {
   const head = el('div', 'verdict');
   const many = new Set(d.cases.map(srcName).filter(Boolean)).size > 1;
   head.append(el('p', 'said', (many ? 'Your agents reported ' : 'Your agent reported ') + d.agent_reported + ' Cases closed.'));
-  head.append(el('h1', '', (t.correct === d.agent_reported ? 'All ' + t.correct : t.correct) + ' passed every auditable check.'));
+  head.append(el('h1', '', (t.correct === d.agent_reported ? 'All ' + t.correct : t.correct) + ' passed the verified checks.'));
   const sub = [];
   if (bad) sub.push(bad + ' failed at least one');
   if (unc) sub.push(unc + ' cannot be confirmed');
-  head.append(el('p', 'tally', (sub.length ? sub.join(' and ') + '. ' : '') + 'Rate: ' + pct(d.outcome_rate) + '. Unconfirmed Cases never count as correct.' + (d.not_auditable && d.not_auditable.length ? ' ' + d.not_auditable.length + ' checks in the plan are not verified here, so this is not a full verdict on the rule.' : '')));
+  head.append(el('p', 'tally', (sub.length ? sub.join(' and ') + '. ' : '') + (d.not_auditable && d.not_auditable.length ? 'Only ' + (d.by_check.length) + ' of ' + (d.by_check.length + d.not_auditable.length) + ' plan conditions can be verified from the final record, so this is not a full verdict on the rule. Unconfirmed Cases never count as correct.' : 'Unconfirmed Cases never count as correct.')));
   const stats = el('div', 'vstats'); const nObs = d.by_check.length, nNot = (d.not_auditable || []).length;
   [[String(d.agent_reported), 'Cases verified'], [String(bad + unc), 'divergences' + (unc ? ' or unconfirmed' : '')], [nObs + ' of ' + (nObs + nNot), 'plan conditions verified']].forEach(([n, l]) => { const x = el('div', 'vstat'); x.append(el('b', '', n), el('span', '', l)); stats.append(x); });
   head.append(stats);
@@ -179,10 +179,9 @@ function overview(d) {
   root.append(basisLine(d));
   root.append(strip(d));
   const legend = el('p', 'legend');
-  [['correct', 'Passed all checks'], ['incorrect', 'Failed a check'], ['inconclusive', 'Cannot be confirmed']].forEach(([k, t2]) => { const s = el('span', 'key'); s.append(el('i', 'sw ' + k), document.createTextNode(t2)); legend.append(s); });
+  [['correct', 'Passed verified checks'], ['incorrect', 'Failed a check'], ['inconclusive', 'Cannot be confirmed']].forEach(([k, t2]) => { const s = el('span', 'key'); s.append(el('i', 'sw ' + k), document.createTextNode(t2)); legend.append(s); });
   root.append(legend);
   const ex = executors(d); if (ex) root.append(ex);
-  if (d.summary && d.summary.text) root.append(el('p', 'summary', d.summary.text));
   const grid = el('div', 'cols'); grid.append(failuresByRule(d), records(d)); root.append(grid);
   const lim = el('details', 'limits'); lim.append(el('summary', '', 'What this audit does not tell you'));
   d.limitations.forEach(x => lim.append(el('p', '', x))); root.append(lim);
@@ -195,7 +194,7 @@ function detail(id) {
   if (idx < 0) { root.append(el('h1', '', 'Record not found'), el('p', 'muted', 'Open the results first, then choose a record.')); return; }
   const c = data.cases[idx];
   root.append(el('p', 'said', (c.subject || 'Case') + ' · ' + c.case_id + (srcName(c) ? ' · ' + srcName(c) : '') + (data.synthetic ? ' · synthetic' : '')));
-  root.append(el('h1', c.status, c.status === 'correct' ? 'This Case passed every auditable check.' : c.finding));
+  root.append(el('h1', c.status, c.status === 'correct' ? 'This Case passed the verified checks.' : c.finding));
   if (c.agent_claim || c.status !== 'correct') {
     const two = el('div', 'versus');
     const l = el('div', 'side'); l.append(el('h2', '', 'What the agent said'), el('p', 'quote', c.agent_claim ? '“' + c.agent_claim + '”' : (c.agent ? 'The agent run ended without a final report (' + c.agent.outcome + ').' : 'No agent response is attached to this audit. The Case was on the list of Cases reported as closed.')));
@@ -240,9 +239,10 @@ async function route() {
   if (view === 'story') { window.AG && window.AG.showStory && window.AG.showStory(); return; }
   if (view === 'acceptance') { window.AG && window.AG.showAcceptance && window.AG.showAcceptance(); window.scrollTo(0, 0); return; }
   try {
+    if (!data) { const ld = el('p', 'loading', 'Loading recorded audit…'); ld.setAttribute('role', 'status'); $('#results').replaceChildren(ld); }
     if (source === null) { await probeRecorded(); source = hasRecorded ? 'real' : 'demo'; }
     if (!(data && source === 'live')) await loadSource(source);
-  } catch (e) { $('#results').replaceChildren(el('p', 'muted', e.message)); return; }
+  } catch (e) { const b = el('button', 'secondary', 'Try again'); b.type = 'button'; b.onclick = () => route(); const m = el('div', 'loaderr'); m.append(el('p', '', 'Could not load the audit. ' + e.message), b); $('#results').replaceChildren(m); return; }
   drawSwitch();
   const flag = $('#synthetic-flag'); flag.hidden = !data.label; flag.textContent = data.label || '';
   if (view === 'case') detail(decodeURIComponent(h.slice(7))); else { overview(data); }

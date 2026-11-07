@@ -63,15 +63,16 @@ function startForm() {
   f.append(el('h3', '', 'You are the support analyst'));
   const lc = el('label', '', 'Access code'); lc.setAttribute('for', 'live-code');
   const code = el('input'); code.id = 'live-code'; code.type = 'password'; code.autocomplete = 'off'; code.required = true;
-  f.append(lc, code);
-  const sc = el('fieldset'); sc.append(el('legend', '', 'Situation (fixed list, you type nothing the agent reads)'));
+  const sc = el('fieldset'); sc.append(el('legend', '', 'Choose a handled ticket'), el('p', 'muted lg-note', 'Predefined scenarios with synthetic data.'));
   status.scenarios.forEach((s, i) => { const l = el('label', 'opt'); const r = el('input'); r.type = 'radio'; r.name = 'sc'; r.value = s.key; r.checked = i === 0; const sp = el('span'); sp.append(el('b', '', s.title), el('br'), s.text); l.append(r, sp); sc.append(l); });
   const md = el('fieldset'); md.append(el('legend', '', 'What should happen'));
   [['agent', 'Let the Vultr agent handle it', 'A real agent records the closure and creates the follow-up Task.'],
    ['verifier_test', 'Test the verifier with a controlled fault', 'No agent acts. The server closes the Case without a closure reason on purpose, so you see the verifier catch it. Not a failure of any agent.']]
     .forEach(([v, t, d], i) => { const l = el('label', 'opt'); const r = el('input'); r.type = 'radio'; r.name = 'md'; r.value = v; r.checked = i === 0; const s = el('span'); s.append(el('b', '', t), el('br'), d); l.append(r, s); md.append(l); });
-  f.append(sc, md);
-  const go = el('button', 'primary', 'Open the ticket'); go.type = 'submit'; go.disabled = busy; f.append(go);
+  const left = el('div', 'lf-left'), right = el('div', 'lf-right');
+  left.append(sc); right.append(lc, code, md);
+  const go = el('button', 'primary', 'Open the ticket'); go.type = 'submit'; go.disabled = busy; right.append(go);
+  const cols = el('div', 'lf-cols'); cols.append(left, right); f.append(cols);
   f.onsubmit = e => { e.preventDefault(); act(() => api('/sessions', { code: code.value, scenario: f.sc.value, mode: f.md.value })); };
   w.append(f);
   return w;
