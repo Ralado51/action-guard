@@ -80,3 +80,11 @@ header .tabs{overflow-x:auto;scrollbar-width:none;white-space:nowrap}header .tab
 .flow{display:flex;align-items:center;gap:10px;margin:30px 0 8px;flex-wrap:wrap}.chip{border-radius:8px;padding:11px 16px;font-size:14px;font-weight:600}.chip.w{background:#fff;color:#1c1c1c}.chip.y{background:#fff56b;color:#1c1c1c}.arrow{width:26px;height:1px;background:#6a6a6a;position:relative}.arrow:after{content:'';position:absolute;right:0;top:-3px;border-left:6px solid #6a6a6a;border-top:3.5px solid transparent;border-bottom:3.5px solid transparent}
 .st-hero .stat{background:#323232}.st-hero .stat b{font:600 36px/1.1 system-ui,sans-serif}.st-hero .stat span{color:#b8b8b8}.st-hero .split{background:#1f1f1f;border-color:#444}.st-hero .split .record{background:#1f1f1f;border-color:#444}.st-hero .split .claim{background:#33321a}.st-hero .split .big{font:600 28px system-ui,sans-serif}.st-hero .st-lead,.st-hero .muted{color:#b8b8b8}.st-hero .split b.ok{color:#fff56b}
 @media(max-width:700px){.arrow{display:none}.flow{gap:8px}}
+
+.player{margin:30px 0 8px}.stage{min-height:210px;background:#1f1f1f;border:1px solid #444;border-radius:12px;padding:22px 24px;margin-top:14px}.stage h3{font:600 17px system-ui;margin:0 0 12px;color:#fff}.stage .big{font:600 30px system-ui;margin:6px 0 10px;color:#fff}.stage p{margin:6px 0;color:#eaeaea}.stage .muted{color:#b8b8b8}.pl{list-style:none;padding:0;margin:0 0 10px}.pl li{padding:5px 0;font-size:15px;color:#fff}.pl b.ok{color:#fff56b}.pl b.no{color:#ff9d84}
+.pli{animation:pin .5s both}@keyframes pin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.pctl{margin-top:10px}.pctl .quiet{color:#cfcfcf;border-color:#555;padding:7px 14px;border-radius:999px}
+.flow .chip{border:0;cursor:pointer;font-family:inherit}.flow .chip.done{background:#4a4a2a;color:#fff56b}.flow .chip.y{box-shadow:0 0 0 3px #fff56b55}
+@media(prefers-reduced-motion:reduce){.pli{animation:none}}
+@media(max-width:700px){.stage{padding:18px}.flow{gap:6px}.flow .chip{font-size:13px;padding:9px 11px}}
+.player .flow{flex-wrap:nowrap;gap:6px;overflow-x:auto;scrollbar-width:none}.player .flow::-webkit-scrollbar{display:none}.player .chip{white-space:nowrap;padding:10px 13px;font-size:13.5px}.player .arrow{width:14px;flex:none}

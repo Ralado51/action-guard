@@ -24,25 +24,42 @@ function derive(flow, run) {
 
 function pill(text, cls) { return el('span', 'pill ' + (cls || ''), text); }
 
+
+function player() {
+  const root = el('div', 'player'), nodes = el('div', 'flow'), stage = el('div', 'stage'), ctl = el('div', 'pctl');
+  const labels = ['Approved rule', 'Agent reports', 'Record checked', 'Decision', 'Fixed and re-checked'];
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const rowsOf = (r, shown) => { const ul = el('ul', 'plain pl'); r.checks.forEach((c, i) => { const li = el('li', 'pli'); const ok = c.status === 'passed'; li.append(el('b', ok ? 'ok' : 'no', ok ? 'Met' : 'Not met'), document.createTextNode(' ' + (PLAIN[c.check_id] || c.description))); if (!reduce) { li.style.animationDelay = (i * 0.7) + 's'; } ul.append(li); }); return ul; };
+  const views = [
+    () => { const d = el('div'); d.append(el('h3', '', 'Before anything runs, the rule is turned into conditions.')); const ul = el('ul', 'plain pl'); S.first.policy.conditions.filter(c => c.observed).forEach((c, i) => { const li = el('li', 'pli'); li.append(el('b', 'ok', c.severity === 'critical' ? 'Required' : 'Operational'), document.createTextNode(' ' + (PLAIN[c.check_id] || c.description))); if (!reduce) li.style.animationDelay = (i * 0.5) + 's'; ul.append(li); }); d.append(ul, el('p', 'muted', 'A person approves this version. Its hash is recorded.')); return d; },
+    () => { const d = el('div'); d.append(el('h3', '', 'The agent answers:'), el('p', 'big pli', '“Case closed.”'), el('p', 'muted', 'That is its own account. Action Guard does not take it as proof.')); return d; },
+    () => { const d = el('div'); d.append(el('h3', '', 'Action Guard reads the Salesforce record, read-only:'), rowsOf(S.bad), el('p', 'muted', 'Controlled test Case: we left out the closure reason on purpose.')); return d; },
+    () => { const d = el('div'); d.append(el('h3', '', 'A required condition is not met, so the result is not accepted.'), el('p', 'pli', 'A finding is opened, assigned to a person, and tracked until it is fixed.')); return d; },
+    () => { const d = el('div'); d.append(el('h3', '', 'After the fix, a new audit confirms it.'), rowsOf(S.good), el('p', 'muted', 'The finding closes only after this second check, with a verifiable evidence dossier.')); return d; },
+  ];
+  let i = 0, timer = null, playing = !reduce;
+  const btns = labels.map((t, k) => { const b = el('button', 'chip w', t); b.type = 'button'; b.onclick = () => { stop(); set(k); }; return b; });
+  btns.forEach((b, k) => { if (k) nodes.append(el('i', 'arrow')); nodes.append(b); });
+  function set(k) { i = k; btns.forEach((b, j) => { b.classList.toggle('y', j === k); b.classList.toggle('w', j !== k); b.classList.toggle('done', j < k); b.toggleAttribute('aria-current', j === k); }); stage.replaceChildren(views[k]()); }
+  function tick() { set((i + 1) % views.length); }
+  function start() { playing = true; pb.textContent = 'Pause'; clearInterval(timer); timer = setInterval(() => { if (!document.hidden && document.body.contains(root)) tick(); else if (!document.body.contains(root)) clearInterval(timer); }, 4200); }
+  function stop() { playing = false; pb.textContent = 'Play'; clearInterval(timer); }
+  const pb = el('button', 'quiet', 'Pause'); pb.type = 'button'; pb.onclick = () => playing ? stop() : start();
+  ctl.append(pb);
+  stage.setAttribute('aria-live', 'polite');
+  root.append(nodes, stage, ctl); set(0); if (playing) start(); else pb.textContent = 'Play';
+  return root;
+}
+
 function hero() {
   const d = el('section', 'st-hero');
   d.append(el('h1', '', 'An AI agent says the work is done. Would you accept it?'));
   d.append(el('p', 'st-lead', 'Action Guard checks the Salesforce record against the agreed rule, not the agent’s word, and keeps a record of the decision to accept the result or investigate it.'));
-  const b = el('button', 'primary', 'Walk through one Case in 60 seconds'); b.type = 'button'; b.onclick = () => go(1);
+  const b = el('button', 'primary', 'Step through it in detail'); b.type = 'button'; b.onclick = () => go(1);
   d.append(b);
   const tl = el('a', 'quiet linkbtn', 'Try it on a live Case'); tl.href = '#/live'; tl.hidden = true; d.append(tl);
   fetch('/api/live/status', { cache: 'no-store' }).then(r => r.json()).then(j => { tl.hidden = !j.enabled; }).catch(() => {});
-  const fl = el('div', 'flow'); fl.setAttribute('aria-label', 'How a result is checked');
-  [['Approved rule', 'w'], ['Agent acts', 'w'], ['Read-only audit of the record', 'w'], ['Accept or investigate', 'y']].forEach(([t, k], i) => { if (i) fl.append(el('i', 'arrow')); fl.append(el('span', 'chip ' + k, t)); });
-  d.append(fl);
-  if (S && S.bad) {
-    const g = el('div', 'split'); g.setAttribute('aria-label', 'Claim versus record');
-    const a = el('div', 'half claim'); a.append(el('h3', '', 'What was reported'), el('p', 'big', '“Case closed.”'), el('p', 'muted', 'The kind of message an agent returns when it believes the job is done.'));
-    const b = el('div', 'half record'); b.append(el('h3', '', 'What the record holds'));
-    const ul = el('ul', 'plain'); S.bad.checks.forEach(c => { const li = el('li'); li.append(el('b', c.status === 'passed' ? 'ok' : 'no', c.status === 'passed' ? 'Met' : 'Not met'), document.createTextNode(' ' + (PLAIN[c.check_id] || c.description))); ul.append(li); });
-    b.append(ul, el('p', 'muted', 'Controlled test Case: we left out the closure reason on purpose.'));
-    g.append(a, b); d.append(g);
-  }
+  if (S && S.bad) d.append(player());
   if (S && S.cal) {
     const c = S.cal, st = el('div', 'stats');
     const add = (n, l) => { const x = el('div', 'stat'); x.append(el('b', '', n), el('span', '', l)); st.append(x); };
