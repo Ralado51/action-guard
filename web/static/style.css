@@ -156,3 +156,16 @@ main{padding:0 32px}#story{padding:16px 0 10px}
 @media(max-width:820px){.lf-cols{grid-template-columns:1fr;gap:0}.ef.inj th:nth-child(2),.ef.inj td:nth-child(2){display:none}}
 
 .live:has(.lf-cols){max-width:none}.live-form{padding:20px 24px}.live-form h3{margin:0 0 4px}.lf-left fieldset{margin-top:12px}.lf-right label:first-child{margin-top:12px}.lf-right fieldset{margin:14px 0 6px}.lf-right .primary{margin-top:10px}
+
+/* ---- lit wires and travelling pulse ---- */
+.diag .w{transition:stroke .6s,opacity .6s}.diag .dot{stroke:#4d4d4d}
+.diag .hot.g0{opacity:0}.diag[data-k="0"] .hot.g0,.diag[data-k="1"] .hot.g0,.diag[data-k="2"] .hot.g0,.diag[data-k="3"] .hot.g0{opacity:.55}.diag[data-k="0"] .hot.g0{opacity:1}
+.diag .pulse{fill:none;stroke:#fff56b;stroke-width:3;stroke-linecap:round;stroke-dasharray:10 90;stroke-dashoffset:10;opacity:0;filter:drop-shadow(0 0 4px #fff56b)}
+.diag[data-k="0"] .pulse.g0,.diag[data-k="1"] .pulse.g1,.diag[data-k="2"] .pulse.g2,.diag[data-k="3"] .pulse.g3{opacity:1;animation:travel 1.5s ease-in-out infinite}
+@keyframes travel{from{stroke-dashoffset:10}to{stroke-dashoffset:-100}}
+.diag[data-k="0"] .dt0,.diag[data-k="0"] .db0,.diag[data-k="1"] .dt1,.diag[data-k="1"] .db1,.diag[data-k="2"] .dt2,.diag[data-k="2"] .db2,.diag[data-k="3"] .dot{stroke:#fff56b}
+.dn.src{transition:box-shadow .5s,color .5s,background .5s}.dn.src.lit{color:#fff56b;background:#3a3a30;box-shadow:0 0 0 1px #fff56b88,0 0 1.2em #fff56b33}
+.dn.out.lit{box-shadow:0 0 1.4em #fff56b55}
+.diag.calm .pulse{animation:none!important;opacity:0!important}
+@media(prefers-reduced-motion:reduce){.diag .pulse{animation:none!important}}
+.diag .hot{stroke-width:1.8}.diag .pulse{stroke-dasharray:14 86;stroke-dashoffset:14}@keyframes travel{from{stroke-dashoffset:14}to{stroke-dashoffset:-100}}
