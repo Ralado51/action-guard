@@ -92,7 +92,8 @@ function diagram() {
     card(1, c => { c.append(el('div', 'dh', 'Finding'), el('div', 'dl', 'Result: not accepted\nStatus: opened\nOwner: assigned to a person')); }),
     card(2, c => { c.append(el('div', 'dh', 'Second audit'), rows(S.good), el('div', 'dl', 'Finding: closed')); }),
   ];
-  const all = [...nodes, ...mets, ...cards];
+  const g = el('div', 'dgi'); while (root.firstChild) g.append(root.firstChild); root.append(g);
+  if (reduce) root.classList.add('calm');
   let k = -1, timer = null;
   function set(n) {
     k = n; root.dataset.k = String(n);
@@ -102,7 +103,6 @@ function diagram() {
     outs.forEach((x, i) => x.classList.toggle('lit', n === 3 || (n >= 0 && i <= n && n !== 3 && i < n + 0)));
     root.classList.toggle('s1', n >= 1 || n === 3); root.classList.toggle('s2', n >= 2 || n === 3); root.classList.toggle('s3', n === 3);
   }
-  if (reduce) { set(3); root.classList.add('still'); return root; }
   const order = [0, 1, 2, 3, 3, -1];
   let idx = 0; set(order[0]);
   timer = setInterval(() => { if (!document.body.contains(root)) { clearInterval(timer); return; } if (document.hidden) return; idx = (idx + 1) % order.length; set(order[idx]); }, 3600);
