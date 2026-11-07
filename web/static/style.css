@@ -231,3 +231,5 @@ a.dk{color:inherit;text-decoration:none;display:block}a.dk:hover,a.dk:focus-visi
 @keyframes rpin{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}.rp-bar{display:flex;gap:8px;margin-top:8px}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 @media(max-width:700px){.rp-stage{grid-template-columns:1fr}.rp-wire{height:30px;width:2px;margin:6px 24px;background:repeating-linear-gradient(180deg,#c9c6bb 0 6px,transparent 6px 12px)}.rp-dot{left:-5px!important;top:0}.rp-wire.w .rp-dot{animation:rpdown 650ms forwards}.rp-wire.r .rp-dot{animation:rpup 650ms forwards}@keyframes rpdown{0%{top:0;opacity:1}85%{opacity:1}100%{top:calc(100% - 12px);opacity:0}}@keyframes rpup{0%{top:calc(100% - 12px);opacity:1}85%{opacity:1}100%{top:0;opacity:0}}}
+
+input.masked{-webkit-text-security:disc;text-security:disc}

@@ -25,3 +25,11 @@ $('#refresh-run').onclick=()=>task(poll);$('#download').onclick=()=>{if(!report)
 runId=sessionStorage.getItem('actionGuardRun');if(runId){$('#report-panel').hidden=false;$('#refresh-run').hidden=false;$('#run-state').textContent='Previous run: '+runId+'. Connect, then click Refresh status.';}
 
 fetch('/api/capabilities',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.json();}).then(c=>{executionEnabled=c.execution_enabled===true;$('#demo-banner').textContent=executionEnabled?'Execution environment: actions require an approved plan.':'Demo mode: real execution is blocked. Generate, review, approve and audit remain available; the audit reads data in read-only mode.';applyMode(!runId);}).catch(()=>{executionEnabled=false;$('#demo-banner').textContent='Could not confirm the mode. Execution is unavailable.';applyMode();});
+
+// Secret fields that Chrome must not offer to save as a password: a masked text input (CSS) where supported.
+window.AG = Object.assign(window.AG || {}, { maskInput(i) {
+  i.setAttribute('autocomplete', 'off'); i.setAttribute('autocapitalize', 'off'); i.setAttribute('autocorrect', 'off'); i.spellcheck = false;
+  i.setAttribute('data-lpignore', 'true'); i.setAttribute('data-1p-ignore', ''); i.setAttribute('data-form-type', 'other');
+  try { if (window.CSS && CSS.supports('-webkit-text-security', 'disc')) { i.type = 'text'; i.classList.add('masked'); return i; } } catch (e) {}
+  i.type = 'password'; return i; } });
+document.addEventListener('DOMContentLoaded', () => { const t = document.getElementById('token'); if (t) window.AG.maskInput(t); });
