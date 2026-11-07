@@ -104,3 +104,21 @@ header .tabs{overflow-x:auto;scrollbar-width:none;white-space:nowrap}header .tab
 .pmobile{display:none}@media(max-width:700px){.diag{display:none}.pmobile{display:block}#story:has(.st-hero){max-width:none}}
 @media(prefers-reduced-motion:reduce){.metric,.dcard,.dn,.hot{transition:none}}
 .dn.out{padding:0 .55em;font-size:.94em}.diag{margin-bottom:0}
+
+/* ---- Theme: charcoal + yellow, sans-serif everywhere ---- */
+:root{--serif:system-ui,-apple-system,"Segoe UI",sans-serif;--paper:#fff;--green:#2b2b2b;--line:#e6e4de;--ink:#1c1c1c;--muted:#5d5d5d;--yel:#fff56b;--char:#262626}
+body{background:#fff;color:var(--ink)}
+.announce{background:var(--yel);color:#1c1c1c;text-align:center;font-size:13px;padding:9px 16px;line-height:1.4}
+header{border-bottom:1px solid var(--line);background:#fff}header .tabs a.on{background:var(--yel);color:#1c1c1c}header .tabs a:hover{color:#000}.opmenu a.on{background:var(--yel);color:#1c1c1c}
+h1,h2,h3{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-weight:600;letter-spacing:-.6px}
+.primary{background:var(--char);color:#fff;border-radius:999px;padding:13px 24px}.primary:hover{background:#000}
+.secondary{background:#efe9d8;color:#1c1c1c;border-radius:999px}.quiet{border-radius:999px;color:#1c1c1c;border-color:#cfcdc6}.danger{background:var(--char);border-radius:999px}
+.linkbtn{border-radius:999px}
+.verdict{background:var(--char);background-image:radial-gradient(#3a3a3a 1px,transparent 1px);background-size:22px 22px;color:#eee;border-radius:22px;padding:48px 44px 34px;max-width:none;margin-top:24px}
+.verdict h1{color:#fff;font:600 clamp(32px,4.6vw,54px)/1.1 system-ui,sans-serif;letter-spacing:-1.4px;margin:0 0 18px;max-width:20em}
+.verdict .said,.verdict .tally,.verdict p{color:#b8b8b8}.verdict a{color:var(--yel)}.verdict .basis,.verdict .muted{color:#9a9a9a}
+.panel,.card,.check,.cov{border-radius:16px}.overview{background:#f4f2ea}.overview li{border-color:#ddd9cc}
+.st-hero+*,#live .st-hero{margin-bottom:26px}
+footer{border-color:var(--line)}
+.pill{background:#efe9d8}
+@media(max-width:700px){.verdict{padding:30px 20px 24px}.announce{font-size:12px}}
