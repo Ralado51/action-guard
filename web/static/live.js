@@ -97,11 +97,12 @@ function session() {
   if (v.state === 'failed') { d.append(el('p', 'banner bad', v.error || 'This session failed.')); d.append(button('Start over', 'quiet', () => { store.set(null); view = null; draw(); })); return d; }
 
   const h = el('section', 'card'); h.append(el('h3', '', v.mode === 'agent' ? 'Handling' : 'Controlled fault'));
-  if (v.mode === 'verifier_test') h.append(el('p', '', 'Action Guard closed this Case without a closure reason, on purpose. No agent was involved.'));
+  if (v.mode === 'verifier_test') { h.append(el('p', '', 'Action Guard closed this Case without a closure reason, on purpose. No agent was involved.')); if (window.AG && AG.replay && v.state !== 'created') h.append(AG.replay({ kind: 'fault', key: v.session_id })); }
   else if (v.state === 'created') { h.append(el('p', 'muted', 'The agent has not started. It acts once per ticket and is never retried.')); h.append(button('Let the agent handle it', 'primary', () => act(() => api('/sessions/' + v.session_id + '/run', {})))); }
   else if (v.state === 'running') h.append(el('p', '', 'The agent is working on the Case…'));
   else if (v.claims) {
     h.append(el('p', 'muted', 'Executor: Vultr agent · ' + v.claims.steps.length + ' recorded steps · outcome ' + v.claims.outcome));
+    if (window.AG && AG.replay && v.claims.source === 'vultr-agent' && v.claims.steps.some(x => x.tool === 'close_case' || x.tool === 'create_followup_task')) h.append(AG.replay({ kind: 'agent', key: v.session_id, steps: v.claims.steps }));
     if (v.claims.final_message) h.append(el('p', 'quote', '“' + v.claims.final_message + '”'), el('p', 'muted', 'This is the agent’s own account. The next step reads the record instead.'));
     if (v.state === 'uncertain') h.append(el('p', 'banner bad', 'A write had an uncertain outcome. It is not repeated; check the record below.'));
   }
