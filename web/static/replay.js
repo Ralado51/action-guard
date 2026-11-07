@@ -52,7 +52,7 @@ function replay(opts) {
   again.onclick = () => { reset(); timer = setTimeout(step, 300); };
   skip.onclick = final;
   paint();
-  if (played.has(key)) final(); else timer = setTimeout(step, 500);
+  if (played.has(key)) final(); else { setTimeout(() => { if (box.isConnected) box.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 120); timer = setTimeout(step, 900); }
   return box;
 }
 
