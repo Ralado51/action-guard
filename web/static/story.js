@@ -32,6 +32,9 @@ function hero() {
   d.append(b);
   const tl = el('a', 'quiet linkbtn', 'Try it on a live Case'); tl.href = '#/live'; tl.hidden = true; d.append(tl);
   fetch('/api/live/status', { cache: 'no-store' }).then(r => r.json()).then(j => { tl.hidden = !j.enabled; }).catch(() => {});
+  const fl = el('div', 'flow'); fl.setAttribute('aria-label', 'How a result is checked');
+  [['Approved rule', 'w'], ['Agent acts', 'w'], ['Read-only audit of the record', 'w'], ['Accept or investigate', 'y']].forEach(([t, k], i) => { if (i) fl.append(el('i', 'arrow')); fl.append(el('span', 'chip ' + k, t)); });
+  d.append(fl);
   if (S && S.bad) {
     const g = el('div', 'split'); g.setAttribute('aria-label', 'Claim versus record');
     const a = el('div', 'half claim'); a.append(el('h3', '', 'What was reported'), el('p', 'big', '“Case closed.”'), el('p', 'muted', 'The kind of message an agent returns when it believes the job is done.'));
