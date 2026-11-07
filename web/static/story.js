@@ -40,6 +40,14 @@ function hero() {
     b.append(ul, el('p', 'muted', 'Controlled test Case: we left out the closure reason on purpose.'));
     g.append(a, b); d.append(g);
   }
+  if (S && S.cal) {
+    const c = S.cal, st = el('div', 'stats');
+    const add = (n, l) => { const x = el('div', 'stat'); x.append(el('b', '', n), el('span', '', l)); st.append(x); };
+    add(c.detected + ' of ' + c.injected, 'injected faults detected');
+    add(c.false_alarms + ' of ' + c.controls, 'correct Cases flagged by mistake');
+    if (S.run) add(String(S.run.totals.evaluated), 'real agent Cases checked, from two executors');
+    d.append(st);
+  }
   d.append(el('p', 'muted st-note', 'Recorded run in a Salesforce developer org, with synthetic Cases only. Nothing here is executed live.'));
   return d;
 }

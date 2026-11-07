@@ -67,3 +67,10 @@ header .tabs{overflow-x:auto;scrollbar-width:none;white-space:nowrap}header .tab
 .split{display:grid;grid-template-columns:1fr 1fr;gap:0;margin:28px 0 8px;max-width:820px;border:1px solid var(--line);border-radius:10px;overflow:hidden}.split .half{padding:22px}.split .claim{background:#eef6f1}.split .record{background:#fff;border-left:1px solid var(--line)}.split h3{font:600 15px system-ui;margin:0 0 10px}.split .big{font:500 28px var(--serif);margin:0 0 8px}.split ul{list-style:none;padding:0;margin:0 0 10px}.split li{padding:4px 0;font-size:14px}.split b.ok{color:#17766b}.split b.no{color:#af402a}
 @media(max-width:700px){header{flex-wrap:nowrap;gap:6px}header .tabs{margin-left:4px;flex:1;min-width:0}header .tabs a{padding:8px 9px;font-size:13px}.split{grid-template-columns:1fr}.split .record{border-left:0;border-top:1px solid var(--line)}}
 @media(max-width:700px){header{flex-wrap:wrap;row-gap:4px}header .brand{order:1}.opmenu{order:2}header .tabs{order:3;flex:1 0 100%;margin:0 -6px}}
+
+.st-hero{background:#0f2230;color:#eef3f7;border-radius:18px;padding:56px 48px 40px;margin-top:24px}.st-hero h1{color:#fff}.st-hero .st-lead,.st-hero .muted{color:#a9bccb}.st-hero .primary{background:#5fb39a;color:#0b1f2a}.st-hero .primary:hover{background:#7cc7b0}.st-hero .quiet{color:#cfe3ee;border-color:#35506a}
+.st-hero .split{border-color:#2a4357;background:#0b1b27}.st-hero .split .claim{background:#143528}.st-hero .split .record{background:#0b1b27;border-color:#2a4357}.st-hero .split h3,.st-hero .split li{color:#eef3f7}.st-hero .split b.ok{color:#7cc7b0}.st-hero .split b.no{color:#ff9d84}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:22px 0 6px;max-width:820px}.stat{background:#16303f;border-radius:12px;padding:20px}.stat b{display:block;font:500 36px/1.1 var(--serif);color:#fff}.stat span{display:block;margin-top:8px;font-size:13px;color:#a9bccb}
+@media(max-width:700px){.st-hero{padding:32px 20px 24px}.stats{grid-template-columns:1fr}}
+.st-hero{max-width:none}.st-hero .split,.stats{max-width:none}
+#story{margin:0 auto}
