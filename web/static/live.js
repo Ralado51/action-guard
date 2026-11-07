@@ -70,7 +70,9 @@ function startForm() {
    ['verifier_test', 'Test the verifier with a controlled fault', 'No agent acts. The server closes the Case without a closure reason on purpose, so you see the verifier catch it. Not a failure of any agent.']]
     .forEach(([v, t, d], i) => { const l = el('label', 'opt'); const r = el('input'); r.type = 'radio'; r.name = 'md'; r.value = v; r.checked = i === 0; const s = el('span'); s.append(el('b', '', t), el('br'), d); l.append(r, s); md.append(l); });
   const left = el('div', 'lf-left'), right = el('div', 'lf-right');
-  left.append(sc); right.append(lc, code, md);
+  const hint = el('p', 'muted code-hint'); hint.append(document.createTextNode('The access code is in the project submission notes. No code? '));
+  const wl = el('a', '', 'View the recorded walkthrough'); wl.href = '#/story'; hint.append(wl, document.createTextNode('.'));
+  left.append(sc); right.append(lc, code, hint, md);
   const go = el('button', 'primary', 'Open the ticket'); go.type = 'submit'; go.disabled = busy; right.append(go);
   const cols = el('div', 'lf-cols'); cols.append(left, right); f.append(cols);
   f.onsubmit = e => { e.preventDefault(); act(() => api('/sessions', { code: code.value, scenario: f.sc.value, mode: f.md.value })); };

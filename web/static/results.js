@@ -10,7 +10,7 @@ let data = null, filter = 'all', recQuery = '', recLimit = 15; const REC_PAGE = 
 
 function pct(r) { return r === null || r === undefined ? '—' : (r * 100).toFixed(1).replace(/\.0$/, '') + '%'; }
 
-let source = null, recorded = null, hasRecorded = false;
+let source = null, recorded = null, hasRecorded = false, routeSeq = 0;
 
 async function loadSource(name) {
   if (name === 'live' && data && !data.synthetic) return data;
@@ -121,7 +121,12 @@ function records(d) {
   const needle = recQuery.trim().toLowerCase();
   const text = c => ((c.subject || '') + ' ' + c.case_id + ' ' + (srcName(c) || '')).toLowerCase();
   const view = d.cases.map((c, i) => [c, i]).filter(([c]) => (filter === 'all' || c.status === filter) && (!needle || text(c).includes(needle))).sort((x, y) => rank[x[0].status] - rank[y[0].status] || x[1] - y[1]);
-  if (!view.length) ul.append(el('li', 'empty', 'No records in this group.'));
+  if (!view.length) {
+    const li = el('li', 'empty');
+    if (needle) { li.append(document.createTextNode('No records match your search. ')); const b = el('button', 'quiet', 'Clear search'); b.type = 'button'; b.onclick = () => { recQuery = ''; recLimit = REC_PAGE; render(); }; li.append(b); }
+    else li.textContent = 'No records in this group.';
+    ul.append(li);
+  }
   view.slice(0, recLimit).forEach(([c, i]) => {
     const li = el('li'), a = el('a', 'rec ' + c.status);
     a.href = '#/case/' + c.case_id;
@@ -199,7 +204,11 @@ function detail(id) {
     const two = el('div', 'versus');
     const l = el('div', 'side'); l.append(el('h2', '', 'What the agent said'), el('p', 'quote', c.agent_claim ? '“' + c.agent_claim + '”' : (c.agent ? 'The agent run ended without a final report (' + c.agent.outcome + ').' : 'No agent response is attached to this audit. The Case was on the list of Cases reported as closed.')));
     const r = el('div', 'side ' + c.status); r.append(el('h2', '', 'What the data shows'));
-    if (c.status === 'correct') r.append(el('p', '', 'Every auditable check passed.'));
+    if (c.status === 'correct') {
+      const nv = (data.not_auditable || []).length, ps = c.checks.filter(k => k.status === 'passed').length, fl = c.checks.filter(k => k.status === 'failed').length;
+      r.append(el('p', 'sumline', ps + ' verified · ' + fl + ' failed · ' + nv + ' not verified'));
+      if (nv) { const a = el('a', 'quiet-link', 'See what is not verified'); a.href = '#'; a.onclick = e => { e.preventDefault(); const g = document.getElementById('case-gaps'); if (g) { g.open = true; g.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }; r.append(a); }
+    }
     else if (data.synthetic) r.append(el('p', '', c.finding.replace(/^The agent reported success, but /, '').replace(/^./, m => m.toUpperCase())));
     else c.checks.filter(k => k.status !== 'passed').forEach(k => r.append(el('p', 'miss', k.description.replace(/\.$/, '') + ': expected ' + (k.expected || '—') + ', found ' + k.found + '.')));
     two.append(l, r); root.append(two);
@@ -220,7 +229,13 @@ function detail(id) {
     const ol = el('ol'); c.agent.steps.forEach(x => ol.append(el('li', '', x.at.replace('T', ' ').replace('Z', ' UTC') + ' · ' + x.tool + (x.result ? ' → ' + x.result : ''))));
     det.append(ol); root.append(det);
   }
-  if (data.not_auditable && data.not_auditable.length) root.append(el('p', 'muted', data.not_auditable.length + ' other checks of the plan need the state before the agent acted, so this audit does not claim them.'));
+  if (data.not_auditable && data.not_auditable.length) {
+    const g = el('details', 'notver'); g.id = 'case-gaps';
+    g.append(el('summary', '', data.not_auditable.length + ' plan conditions are not verified for this Case'));
+    const NAME = { chk_reason_matches: 'Closure reason equals the expected one', chk_owner_unchanged: 'Owner unchanged', chk_no_unexpected: 'No unexpected field changes' };
+    data.not_auditable.forEach(x => g.append(el('p', '', (NAME[x.check_id] || x.check_id.replace(/^chk_/, '').replace(/_/g, ' ')) + ': ' + x.reason)));
+    root.append(g);
+  }
   const nav = el('div', 'pager');
   if (idx > 0) { const p = el('a', '', 'Previous record'); p.href = '#/case/' + data.cases[idx - 1].case_id; nav.append(p); }
   if (idx < data.cases.length - 1) { const n = el('a', '', 'Next record'); n.href = '#/case/' + data.cases[idx + 1].case_id; nav.append(n); }
@@ -234,6 +249,8 @@ async function route() {
   const view = (!h || h.startsWith('#/story')) ? 'story' : h.startsWith('#/live') ? 'live' : h.startsWith('#/setup') ? 'setup' : h.startsWith('#/acceptance') ? 'acceptance' : h.startsWith('#/case/') ? 'case' : 'results';
   ['story', 'live', 'results', 'case', 'setup', 'acceptance'].forEach(v => { $('#view-' + v).hidden = v !== view; });
   ['story', 'live', 'results', 'acceptance', 'setup'].forEach(t => { const on = (t === 'results') ? (view === 'results' || view === 'case') : view === t; $('#tab-' + t).classList.toggle('on', on); $('#tab-' + t).toggleAttribute('aria-current', on); });
+  const seq = ++routeSeq;
+  if (view === 'case') { const ld = el('p', 'loading', 'Loading Case evidence…'); ld.setAttribute('role', 'status'); $('#case-detail').replaceChildren(ld); }
   if (view === 'setup') return;
   if (view === 'live') { window.AG && window.AG.showLive && window.AG.showLive(); return; }
   if (view === 'story') { window.AG && window.AG.showStory && window.AG.showStory(); return; }
@@ -243,6 +260,7 @@ async function route() {
     if (source === null) { await probeRecorded(); source = hasRecorded ? 'real' : 'demo'; }
     if (!(data && source === 'live')) await loadSource(source);
   } catch (e) { const b = el('button', 'secondary', 'Try again'); b.type = 'button'; b.onclick = () => route(); const m = el('div', 'loaderr'); m.append(el('p', '', 'Could not load the audit. ' + e.message), b); $('#results').replaceChildren(m); return; }
+  if (seq !== routeSeq) return;
   drawSwitch();
   const flag = $('#synthetic-flag'); flag.hidden = !data.label; flag.textContent = data.label || '';
   if (view === 'case') detail(decodeURIComponent(h.slice(7))); else { overview(data); }
@@ -251,6 +269,8 @@ async function route() {
 
 window.AG = { showReal(report) { data = fromReport(report); source = 'live'; filter = 'all'; location.hash = '#/'; route(); },
               showDemo() { source = null; data = null; filter = 'all'; route(); } };
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { const m = document.querySelector('.opmenu[open]'); if (m) { m.open = false; m.querySelector('summary').focus(); } } });
+document.addEventListener('click', e => { const m = document.querySelector('.opmenu[open]'); if (m && (!m.contains(e.target) || e.target.closest('.opmenu a'))) m.open = false; });
 window.addEventListener('hashchange', route);
 route();
 })();

@@ -189,3 +189,5 @@ main{padding:0 32px}#story{padding:16px 0 10px}
 
 .motion-btn{position:absolute;right:0;bottom:0;background:#323232;color:#e6e6e6;border:1px solid #555;border-radius:999px;padding:6px 14px;font-size:12.5px;cursor:pointer}.motion-btn:hover{background:#3c3c3c}
 .diag.calm .metric,.diag.calm .dcard{transform:none}
+.sumline{font-weight:600;margin:0 0 6px}.quiet-link{font-size:13px;color:var(--ink)}.code-hint{margin:6px 0 0;font-size:13px}.code-hint a{color:var(--ink)}
+.recs .empty .quiet{padding:4px 12px;margin-left:6px}
