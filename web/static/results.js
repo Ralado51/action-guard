@@ -269,8 +269,11 @@ async function route() {
 
 window.AG = { showReal(report) { data = fromReport(report); source = 'live'; filter = 'all'; location.hash = '#/'; route(); },
               showDemo() { source = null; data = null; filter = 'all'; route(); } };
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { const m = document.querySelector('.opmenu[open]'); if (m) { m.open = false; m.querySelector('summary').focus(); } } });
-document.addEventListener('click', e => { const m = document.querySelector('.opmenu[open]'); if (m && (!m.contains(e.target) || e.target.closest('.opmenu a'))) m.open = false; });
+const opBtn = $('#opbtn'), opPanel = $('#oppanel');
+function opSet(open) { opPanel.hidden = !open; opBtn.setAttribute('aria-expanded', String(open)); }
+opBtn.addEventListener('click', () => opSet(opPanel.hidden));
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !opPanel.hidden) { opSet(false); opBtn.focus(); } });
+document.addEventListener('click', e => { if (!opPanel.hidden && (!e.target.closest('.opmenu') || e.target.closest('#oppanel a'))) opSet(false); });
 window.addEventListener('hashchange', route);
 route();
 })();
