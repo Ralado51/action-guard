@@ -83,7 +83,7 @@ function finding(b) {
 function render() {
   const root = $('#acceptance'); root.replaceChildren();
   const head = el('div', 'verdict');
-  head.append(el('p', 'said', 'Acceptance of agent results'), el('h1', '', 'From a detected problem to a closed one, with evidence.'));
+  head.append(el('p', 'said', 'Findings on agent results'), el('h1', '', 'From a detected problem to a closed one, with evidence.'));
   head.append(el('p', 'tally', 'Every divergence becomes a finding with an owner. It closes only after a new audit passes, or when someone accepts the risk in writing. The original failure stays on record.'));
   root.append(head);
   const flag = el('p', 'synthetic-flag', 'Recorded run in a Salesforce developer org with synthetic Cases whose faults were injected by us. Roles are a prototype: names are declared on a shared token, not authenticated identities. Salesforce Ids are masked.');

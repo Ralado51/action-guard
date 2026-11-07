@@ -32,6 +32,14 @@ function hero() {
   d.append(b);
   const tl = el('a', 'quiet linkbtn', 'Try it on a live Case'); tl.href = '#/live'; tl.hidden = true; d.append(tl);
   fetch('/api/live/status', { cache: 'no-store' }).then(r => r.json()).then(j => { tl.hidden = !j.enabled; }).catch(() => {});
+  if (S && S.bad) {
+    const g = el('div', 'split'); g.setAttribute('aria-label', 'Claim versus record');
+    const a = el('div', 'half claim'); a.append(el('h3', '', 'What was reported'), el('p', 'big', '“Case closed.”'), el('p', 'muted', 'The kind of message an agent returns when it believes the job is done.'));
+    const b = el('div', 'half record'); b.append(el('h3', '', 'What the record holds'));
+    const ul = el('ul', 'plain'); S.bad.checks.forEach(c => { const li = el('li'); li.append(el('b', c.status === 'passed' ? 'ok' : 'no', c.status === 'passed' ? 'Met' : 'Not met'), document.createTextNode(' ' + (PLAIN[c.check_id] || c.description))); ul.append(li); });
+    b.append(ul, el('p', 'muted', 'Controlled test Case: we left out the closure reason on purpose.'));
+    g.append(a, b); d.append(g);
+  }
   d.append(el('p', 'muted st-note', 'Recorded run in a Salesforce developer org, with synthetic Cases only. Nothing here is executed live.'));
   return d;
 }
