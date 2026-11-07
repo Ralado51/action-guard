@@ -102,7 +102,6 @@ header .tabs{overflow-x:auto;scrollbar-width:none;white-space:nowrap}header .tab
 .dh{font-weight:600;color:#fff;margin-bottom:.6em;font-size:.95em}.dl{font:.82em/1.6 ui-monospace,Menlo,monospace;white-space:pre-line;color:#cfcfcf}.dl b{font-weight:700}.dl b.ok{color:#fff56b}.dl b.no{color:#ff9d84}
 .diag.still .metric,.diag.still .dcard{opacity:1;transform:none}.diag.still .hot{opacity:1}.diag.still .dn.out{opacity:1}
 .pmobile{display:none}@media(max-width:700px){.diag{display:none}.pmobile{display:block}#story:has(.st-hero){max-width:none}}
-@media(prefers-reduced-motion:reduce){.metric,.dcard,.dn,.hot{transition:none}}
 .dn.out{padding:0 .55em;font-size:.94em}.diag{margin-bottom:0}
 
 /* ---- Theme: charcoal + yellow, sans-serif everywhere ---- */
@@ -167,7 +166,6 @@ main{padding:0 32px}#story{padding:16px 0 10px}
 .dn.src{transition:box-shadow .5s,color .5s,background .5s}.dn.src.lit{color:#fff56b;background:#3a3a30;box-shadow:0 0 0 1px #fff56b88,0 0 1.2em #fff56b33}
 .dn.out.lit{box-shadow:0 0 1.4em #fff56b55}
 .diag.calm .pulse{animation:none!important;opacity:0!important}
-@media(prefers-reduced-motion:reduce){.diag .pulse{animation:none!important}}
 .diag .hot{stroke-width:1.8}.diag .pulse{stroke-dasharray:14 86;stroke-dashoffset:14}@keyframes travel{from{stroke-dashoffset:14}to{stroke-dashoffset:-100}}
 
 /* ---- journey: the pulse travels first, then the box lights up ---- */
@@ -188,3 +186,6 @@ main{padding:0 32px}#story{padding:16px 0 10px}
 .diag .pulse{stroke-width:3.5;stroke-dasharray:16 84;filter:drop-shadow(0 0 5px #fff56b)}
 @keyframes travel1{0%{stroke-dashoffset:16;opacity:1}88%{opacity:1}100%{stroke-dashoffset:-100;opacity:0}}
 .diag.calm .dn,.diag.calm .dn.node,.diag.calm .dn.out,.diag.calm .dn.src{transition:none!important}
+
+.motion-btn{position:absolute;right:0;bottom:0;background:#323232;color:#e6e6e6;border:1px solid #555;border-radius:999px;padding:6px 14px;font-size:12.5px;cursor:pointer}.motion-btn:hover{background:#3c3c3c}
+.diag.calm .metric,.diag.calm .dcard{transform:none}

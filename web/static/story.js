@@ -96,7 +96,12 @@ function diagram() {
     card(2, c => { c.append(el('div', 'dh', 'Second audit'), rows(S.good), el('div', 'dl', 'Finding: closed')); }),
   ];
   const g = el('div', 'dgi'); while (root.firstChild) g.append(root.firstChild); root.append(g);
-  if (reduce) root.classList.add('calm');
+  if (reduce) {
+    root.classList.add('calm');
+    const mb = el('button', 'motion-btn', 'Motion is reduced by your system setting · Play animation'); mb.type = 'button';
+    mb.onclick = () => { root.classList.remove('calm'); mb.remove(); };
+    root.append(mb);
+  }
   let k = -1, timer = null;
   function set(n) {
     k = n; root.dataset.k = String(n);
