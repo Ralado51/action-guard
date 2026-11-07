@@ -24,14 +24,108 @@ function derive(flow, run) {
 
 function pill(text, cls) { return el('span', 'pill ' + (cls || ''), text); }
 
+
+function player() {
+  const root = el('div', 'player'), nodes = el('div', 'flow'), stage = el('div', 'stage'), ctl = el('div', 'pctl');
+  const labels = ['Approved rule', 'Agent reports', 'Record checked', 'Decision', 'Fixed and re-checked'];
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const rowsOf = (r, shown) => { const ul = el('ul', 'plain pl'); r.checks.forEach((c, i) => { const li = el('li', 'pli'); const ok = c.status === 'passed'; li.append(el('b', ok ? 'ok' : 'no', ok ? 'Met' : 'Not met'), document.createTextNode(' ' + (PLAIN[c.check_id] || c.description))); if (!reduce) { li.style.animationDelay = (i * 0.7) + 's'; } ul.append(li); }); return ul; };
+  const views = [
+    () => { const d = el('div'); d.append(el('h3', '', 'Before anything runs, the rule is turned into conditions.')); const ul = el('ul', 'plain pl'); S.first.policy.conditions.filter(c => c.observed).forEach((c, i) => { const li = el('li', 'pli'); li.append(el('b', 'ok', c.severity === 'critical' ? 'Required' : 'Operational'), document.createTextNode(' ' + (PLAIN[c.check_id] || c.description))); if (!reduce) li.style.animationDelay = (i * 0.5) + 's'; ul.append(li); }); d.append(ul, el('p', 'muted', 'A person approves this version. Its hash is recorded.')); return d; },
+    () => { const d = el('div'); d.append(el('h3', '', 'The agent answers:'), el('p', 'big pli', '“Case closed.”'), el('p', 'muted', 'That is its own account. Action Guard does not take it as proof.')); return d; },
+    () => { const d = el('div'); d.append(el('h3', '', 'Action Guard reads the Salesforce record, read-only:'), rowsOf(S.bad), el('p', 'muted', 'Controlled test Case: we left out the closure reason on purpose.')); return d; },
+    () => { const d = el('div'); d.append(el('h3', '', 'A required condition is not met, so the result is not accepted.'), el('p', 'pli', 'A finding is opened, assigned to a person, and tracked until it is fixed.')); return d; },
+    () => { const d = el('div'); d.append(el('h3', '', 'After the fix, a new audit confirms it.'), rowsOf(S.good), el('p', 'muted', 'The finding closes only after this second check, with a verifiable evidence dossier.')); return d; },
+  ];
+  let i = 0, timer = null, playing = !reduce;
+  const btns = labels.map((t, k) => { const b = el('button', 'chip w', t); b.type = 'button'; b.onclick = () => { stop(); set(k); }; return b; });
+  btns.forEach((b, k) => { if (k) nodes.append(el('i', 'arrow')); nodes.append(b); });
+  function set(k) { i = k; btns.forEach((b, j) => { b.classList.toggle('y', j === k); b.classList.toggle('w', j !== k); b.classList.toggle('done', j < k); b.toggleAttribute('aria-current', j === k); }); stage.replaceChildren(views[k]()); }
+  function tick() { set((i + 1) % views.length); }
+  function start() { playing = true; pb.textContent = 'Pause'; clearInterval(timer); timer = setInterval(() => { if (!document.hidden && document.body.contains(root)) tick(); else if (!document.body.contains(root)) clearInterval(timer); }, 4200); }
+  function stop() { playing = false; pb.textContent = 'Play'; clearInterval(timer); }
+  const pb = el('button', 'quiet', 'Pause'); pb.type = 'button'; pb.onclick = () => playing ? stop() : start();
+  ctl.append(pb);
+  stage.setAttribute('aria-live', 'polite');
+  root.append(nodes, stage, ctl); set(0); if (playing) start(); else pb.textContent = 'Play';
+  return root;
+}
+
+const ICON = {
+  sheet: '<svg viewBox="0 0 16 16"><rect x="2" y="2.5" width="12" height="11" rx="1.5"/><path d="M2 6.5h12M6 6.5v7"/></svg>',
+  rule: '<svg viewBox="0 0 16 16"><path d="M4 2.5h6l3 3v8H4z"/><path d="M6 8h5M6 10.5h5"/></svg>',
+  db: '<svg viewBox="0 0 16 16"><ellipse cx="8" cy="4" rx="5" ry="2"/><path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/></svg>',
+  chat: '<svg viewBox="0 0 16 16"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></svg>',
+  search: '<svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/></svg>',
+  scale: '<svg viewBox="0 0 16 16"><path d="M8 2.5v11M4 13.5h8M3 5.5h10M3 5.5l-1.5 4a2 2 0 003 0zM13 5.5l-1.5 4a2 2 0 003 0z"/></svg>',
+  wrench: '<svg viewBox="0 0 16 16"><path d="M10.5 2.5a3.2 3.2 0 00-3 4.3L2.5 11.8l1.7 1.7 5-5a3.2 3.2 0 004.3-3l-2 2-1.8-.4-.4-1.8z"/></svg>',
+  file: '<svg viewBox="0 0 16 16"><path d="M4 2h5.5L13 5.5V14H4z"/><path d="M9 2v4h4"/></svg>',
+  list: '<svg viewBox="0 0 16 16"><path d="M5.5 4h8M5.5 8h8M5.5 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01"/></svg>',
+  check: '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5"/><path d="M5.5 8l2 2 3.5-4"/></svg>',
+};
+function chip(cls, icon, text, x, y, w) {
+  const c = el('div', 'dn ' + cls); c.style.cssText = 'left:' + (x / 10) + '%;top:' + (y / 4.7) + '%;width:' + (w / 10) + '%';
+  const i = el('span', 'ic'); i.innerHTML = ICON[icon]; c.append(i, el('span', '', text)); return c;
+}
+const SHORT = { chk_status_closed: 'Case closed', chk_reason_filled: 'Closure reason', chk_followup_task: 'One follow-up Task' };
+function diagram() {
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const root = el('div', 'diag'); root.setAttribute('role', 'img');
+  root.setAttribute('aria-label', 'Animated: the approved rule and the Salesforce record go through a read-only audit, a decision, and a fix with a second audit. The outputs are an evidence dossier, a findings log and a decision.');
+  const NX = [200, 420, 640], NY = 190;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 1000 470'); svg.setAttribute('class', 'wires');
+  const line = (d, cls) => { const p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); p.setAttribute('d', d); p.setAttribute('class', cls); svg.append(p); return p; };
+  [152, 192, 232].forEach(y => line('M150 ' + (y + 17) + 'H175V' + (NY + 20) + 'H200', 'w base'));
+  line('M390 210H420', 'w base'); line('M610 210H640', 'w base'); [152, 192, 232].forEach(y => line('M830 210H838V' + (y + 17) + 'H848', 'w base'));
+  line('M390 210H420', 'w hot h1'); line('M610 210H640', 'w hot h2'); [152, 192, 232].forEach(y => line('M830 210H838V' + (y + 17) + 'H848', 'w hot h3'));
+  NX.forEach((x, i) => { line('M' + x + ' 48V' + NY, 'w dot'); line('M' + x + ' ' + (NY + 40) + 'V268', 'w dot dn' + i); });
+  root.append(svg);
+  [['sheet', 'Approved rule', 152], ['db', 'Salesforce record', 192], ['chat', 'Agent’s report', 232]].forEach(([ic, t, y]) => root.append(chip('src', ic, t, 10, y, 140)));
+  const nodes = [['search', 'Read-only audit'], ['scale', 'Decision'], ['wrench', 'Fix and re-check']].map(([ic, t], i) => { const n = chip('node n' + i, ic, t, NX[i], NY, 190); root.append(n); return n; });
+  const outs = [['file', 'Evidence dossier', 'o-blue', 152], ['list', 'Findings log', 'o-tan', 192], ['check', 'Decision', 'o-green', 232]].map(([ic, t, c, y]) => { const o = chip('out ' + c, ic, t, 848, y, 150); root.append(o); return o; });
+  const metrics = ['3 conditions checked on the real record', '1 required condition not met: result not accepted', 'A finding closes only after a second audit'];
+  const mets = metrics.map((t, i) => { const m = el('div', 'metric m' + i, t); m.style.cssText = 'left:' + ((NX[i] + 8) / 10) + '%;top:' + (8 / 4.7) + '%;width:' + 19 + '%'; root.append(m); return m; });
+  const card = (i, build) => { const c = el('div', 'dcard c' + i); c.style.cssText = 'left:' + (NX[i] / 10) + '%;top:' + (268 / 4.7) + '%;width:' + (205 / 10) + '%'; build(c); root.append(c); return c; };
+  const rows = r => { const u = el('div', 'dl'); r.checks.forEach(c => { const l = el('div'); l.append(el('b', c.status === 'passed' ? 'ok' : 'no', c.status === 'passed' ? 'MET ' : 'NOT MET '), document.createTextNode(SHORT[c.check_id] || c.description)); u.append(l); }); return u; };
+  const cards = [
+    card(0, c => { c.append(el('div', 'dh', 'Case record'), rows(S.bad)); }),
+    card(1, c => { c.append(el('div', 'dh', 'Finding'), el('div', 'dl', 'Result: not accepted\nStatus: opened\nOwner: assigned to a person')); }),
+    card(2, c => { c.append(el('div', 'dh', 'Second audit'), rows(S.good), el('div', 'dl', 'Finding: closed')); }),
+  ];
+  const all = [...nodes, ...mets, ...cards];
+  let k = -1, timer = null;
+  function set(n) {
+    k = n; root.dataset.k = String(n);
+    nodes.forEach((x, i) => x.classList.toggle('lit', i === n));
+    mets.forEach((x, i) => x.classList.toggle('on', i === n || (n === 3)));
+    cards.forEach((x, i) => x.classList.toggle('on', i === n || (n === 3)));
+    outs.forEach((x, i) => x.classList.toggle('lit', n === 3 || (n >= 0 && i <= n && n !== 3 && i < n + 0)));
+    root.classList.toggle('s1', n >= 1 || n === 3); root.classList.toggle('s2', n >= 2 || n === 3); root.classList.toggle('s3', n === 3);
+  }
+  if (reduce) { set(3); root.classList.add('still'); return root; }
+  const order = [0, 1, 2, 3, 3, -1];
+  let idx = 0; set(order[0]);
+  timer = setInterval(() => { if (!document.body.contains(root)) { clearInterval(timer); return; } if (document.hidden) return; idx = (idx + 1) % order.length; set(order[idx]); }, 3600);
+  return root;
+}
+
 function hero() {
   const d = el('section', 'st-hero');
   d.append(el('h1', '', 'An AI agent says the work is done. Would you accept it?'));
   d.append(el('p', 'st-lead', 'Action Guard checks the Salesforce record against the agreed rule, not the agent’s word, and keeps a record of the decision to accept the result or investigate it.'));
-  const b = el('button', 'primary', 'Walk through one Case in 60 seconds'); b.type = 'button'; b.onclick = () => go(1);
+  const b = el('button', 'primary', 'Step through it in detail'); b.type = 'button'; b.onclick = () => go(1);
   d.append(b);
   const tl = el('a', 'quiet linkbtn', 'Try it on a live Case'); tl.href = '#/live'; tl.hidden = true; d.append(tl);
   fetch('/api/live/status', { cache: 'no-store' }).then(r => r.json()).then(j => { tl.hidden = !j.enabled; }).catch(() => {});
+  if (S && S.bad) { d.append(diagram()); const pm = player(); pm.classList.add('pmobile'); d.append(pm); }
+  if (S && S.cal) {
+    const c = S.cal, st = el('div', 'stats');
+    const add = (n, l) => { const x = el('div', 'stat'); x.append(el('b', '', n), el('span', '', l)); st.append(x); };
+    add(c.detected + ' of ' + c.injected, 'injected faults detected');
+    add(c.false_alarms + ' of ' + c.controls, 'correct Cases flagged by mistake');
+    if (S.run) add(String(S.run.totals.evaluated), 'real agent Cases checked, from two executors');
+    d.append(st);
+  }
   d.append(el('p', 'muted st-note', 'Recorded run in a Salesforce developer org, with synthetic Cases only. Nothing here is executed live.'));
   return d;
 }
