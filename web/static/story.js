@@ -19,7 +19,8 @@ function derive(flow, run) {
   const second = closed.files['report:' + ev('revalidated').data.audit_id];
   const row = r => r.cases.find(c => c.case_id === f.case_id);
   const real = run && run.cases.find(c => c.agent && c.agent.final_message && c.agent.source === 'vultr-agent');
-  return { f, ev, first, second, bad: row(first), good: row(second), cal: flow.calibration, run, real };
+  const realAf = run && run.cases.find(c => c.agent && c.agent.final_message && c.agent.source === 'agentforce');
+  return { f, ev, first, second, bad: row(first), good: row(second), cal: flow.calibration, run, real, realAf };
 }
 
 function pill(text, cls) { return el('span', 'pill ' + (cls || ''), text); }
@@ -83,7 +84,7 @@ function diagram() {
   ROWS.forEach(y => conn(elbow(830, NY + 20, 836, y + 17, 848, 5), 'g3'));
   NX.forEach((x, i) => { line('M' + x + ' 48V' + NY, 'w dot dt' + i); line('M' + x + ' ' + (NY + 40) + 'V158', 'w dot db' + i); });
   root.append(svg);
-  const srcs = [['sheet', 'Approved rule', 43], ['db', 'Salesforce record', 83], ['chat', 'Agent’s report', 123]].map(([ic, t, y]) => { const c = chip('src', ic, t, 10, y, 140); root.append(c); return c; });
+  const srcs = [['sheet', 'Approved rule', 43], ['db', 'Salesforce record', 83], ['chat', 'Agent reports', 123]].map(([ic, t, y]) => { const c = chip('src', ic, t, 10, y, 140); root.append(c); return c; });
   const nodes = [['search', 'Read-only audit'], ['scale', 'Decision'], ['wrench', 'Fix and re-check']].map(([ic, t], i) => { const n = chip('node n' + i, ic, t, NX[i], NY, 190); root.append(n); return n; });
   const outs = [['file', 'Evidence dossier', 'o-blue', 43], ['list', 'Findings log', 'o-tan', 83], ['check', 'Decision', 'o-green', 123]].map(([ic, t, c, y]) => { const o = chip('out ' + c, ic, t, 848, y, 150); root.append(o); return o; });
   const metrics = ['3 conditions checked on the real record', '1 required condition not met: result not accepted', 'A finding closes only after a second audit'];
@@ -135,7 +136,7 @@ function hero() {
     const add = (n, l) => { const x = el('div', 'stat'); x.append(el('b', '', n), el('span', '', l)); st.append(x); };
     add(c.detected + ' of ' + c.injected, 'injected faults detected');
     add(c.false_alarms + ' of ' + c.controls, 'correct Cases flagged by mistake');
-    if (S.run) add(String(S.run.totals.evaluated), 'real agent Cases checked, from two executors');
+    if (S.run) add(String(S.run.totals.evaluated), 'real agent Cases checked: Vultr agent and Agentforce');
     d.append(st);
   }
   d.append(el('p', 'muted st-note', 'Recorded run in a Salesforce developer org, with synthetic Cases only. Nothing here is executed live.'));
@@ -162,11 +163,12 @@ function s1() {
 function s2() {
   const d = el('div'); d.append(el('h2', '', 'Two different starting points, labeled so they are not mixed up.'));
   const g = el('div', 'two');
-  const a = el('article', 'card'); a.append(el('h3', '', 'Real agent run'));
-  if (S.real) {
-    a.append(el('p', 'muted', 'Executor: Vultr agent · ' + S.real.agent.steps.length + ' recorded steps'));
-    a.append(el('p', 'quote', '“' + S.real.agent.final_message + '”'));
-    a.append(el('p', 'muted', 'This is the agent’s own account. Action Guard does not take it as proof; it reads the record.'));
+  const a = el('article', 'card'); a.append(el('h3', '', 'Real agent runs'));
+  const quoteOf = (c, name) => { const w = el('div', 'agq'); w.append(el('p', 'muted', 'Executor: ' + name + ' · ' + c.agent.steps.length + ' recorded steps'), el('p', 'quote', '“' + c.agent.final_message + '”')); return w; };
+  if (S.real || S.realAf) {
+    if (S.real) a.append(quoteOf(S.real, 'Vultr agent'));
+    if (S.realAf) a.append(quoteOf(S.realAf, 'Agentforce agent'));
+    a.append(el('p', 'muted', 'These are the agents’ own accounts. Action Guard does not take them as proof; it reads the record.'));
   } else a.append(el('p', 'muted', 'The recorded agent run is not available.'));
   const b = el('article', 'card seeded'); b.append(el('h3', '', 'Controlled detection test'));
   b.append(el('p', 'muted', 'Fault injected by us, no agent involved'));
