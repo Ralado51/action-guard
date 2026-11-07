@@ -101,8 +101,9 @@ function diagram() {
     k = n; root.dataset.k = String(n);
     nodes.forEach((x, i) => x.classList.toggle('lit', i === n));
     srcs.forEach(x => x.classList.toggle('lit', n === 0));
-    mets.forEach((x, i) => x.classList.toggle('on', i === n || (n === 3)));
-    cards.forEach((x, i) => x.classList.toggle('on', i === n || (n === 3)));
+    mets.forEach((x, i) => x.classList.toggle('on', n >= 0 && (i <= n || n === 3)));
+    cards.forEach((x, i) => x.classList.toggle('on', n >= 0 && (i <= n || n === 3)));
+    [0, 1, 2].forEach(i => root.classList.toggle('o' + i, n >= 0 && (i <= n || n === 3)));
     outs.forEach(x => x.classList.toggle('lit', n === 3));
     root.classList.toggle('s1', n >= 1 || n === 3); root.classList.toggle('s2', n >= 2 || n === 3); root.classList.toggle('s3', n === 3);
   }
