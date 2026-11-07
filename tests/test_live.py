@@ -181,3 +181,13 @@ def test_scenarios_do_not_promise_a_resolution_the_agent_does_not_perform():
     from web.app.live import SCENARIOS
     for title, text, _ in SCENARIOS.values():
         assert "already" in text and "Record the closure" in text and "follow-up" in text
+
+
+def test_activity_is_aggregate_only(env):
+    demo, org, clock, calls, c, cfg, tmp = env
+    assert c.get("/api/live/activity").json()["sessions"] == 0
+    sid = start(c, mode="verifier_test").json()["session_id"]
+    c.post(f"/api/live/sessions/{sid}/check")
+    a = c.get("/api/live/activity").json()
+    assert a["sessions"] == 1 and a["faults_injected"] == 1 and a["faults_detected"] == 1
+    assert not IDS.search(json.dumps(a)) and CODE not in json.dumps(a)

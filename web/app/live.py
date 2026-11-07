@@ -280,6 +280,29 @@ class LiveDemo:
         self._save(s)
         return self.view(sid)
 
+    def activity(self) -> dict[str, Any]:
+        """Public, aggregate-only summary of past sessions: no codes, no Case Ids, no agent text."""
+        with self._c() as db:
+            rows = db.execute("SELECT body FROM sessions ORDER BY created DESC").fetchall()
+        items, agg = [], {"sessions": 0, "checked": 0, "agent_passed": 0, "agent_failed": 0, "faults_injected": 0, "faults_detected": 0, "fixed": 0, "errors": 0}
+        for (raw,) in rows:
+            s = json.loads(raw); agg["sessions"] += 1
+            sts = [r["cases"][0]["status"] for r in s.get("reports", []) if r.get("cases")]
+            first = sts[0] if sts else None
+            if sts: agg["checked"] += 1
+            if s["state"] == "failed": agg["errors"] += 1
+            if s["mode"] == "agent" and first:
+                agg["agent_passed" if first == "correct" else "agent_failed"] += 1
+            if s["mode"] == "verifier_test" and first:
+                agg["faults_injected"] += 1
+                if first != "correct": agg["faults_detected"] += 1
+            if s["state"] == "fixed": agg["fixed"] += 1
+            if len(items) < 8:
+                items.append({"at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(s["created"])), "mode": s["mode"],
+                              "scenario": SCENARIOS[s["scenario"]][0], "first": first, "last": sts[-1] if sts else None,
+                              "state": s["state"]})
+        return {**agg, "recent": items}
+
     # ---- public view ----
     def view(self, sid: str) -> dict[str, Any]:
         s = self._load(sid)
