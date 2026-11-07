@@ -249,6 +249,7 @@ async function route() {
   const view = (!h || h.startsWith('#/story')) ? 'story' : h.startsWith('#/live') ? 'live' : h.startsWith('#/dashboard') ? 'dashboard' : h.startsWith('#/setup') ? 'setup' : h.startsWith('#/acceptance') ? 'acceptance' : h.startsWith('#/case/') ? 'case' : 'results';
   ['story', 'live', 'dashboard', 'results', 'case', 'setup', 'acceptance'].forEach(v => { $('#view-' + v).hidden = v !== view; });
   ['story', 'live', 'dashboard', 'results', 'acceptance', 'setup'].forEach(t => { const on = (t === 'results') ? (view === 'results' || view === 'case') : view === t; $('#tab-' + t).classList.toggle('on', on); $('#tab-' + t).toggleAttribute('aria-current', on); });
+  const fm = view === 'results' && h.match(/[?&]f=(incorrect|inconclusive|correct)\b/); if (fm) { filter = fm[1]; recLimit = REC_PAGE; recQuery = ''; }
   const seq = ++routeSeq;
   if (view === 'case') { const ld = el('p', 'loading', 'Loading Case evidence…'); ld.setAttribute('role', 'status'); $('#case-detail').replaceChildren(ld); }
   if (view === 'setup') return;

@@ -39,17 +39,36 @@ function card(title, lead) { const c = el('section', 'dcardx'); c.append(el('h2'
 
 function kpis(run, flow) {
   const t = run.totals, strip = el('div', 'dkpis');
-  const add = (n, l, sub) => { const x = el('div', 'dk'); x.append(el('b', '', n), el('span', '', l)); if (sub) x.append(el('small', '', sub)); strip.append(x); };
-  add(String(t.evaluated), 'Cases verified', t.correct + ' passed the verified checks');
-  add(String(t.incorrect + t.inconclusive), 'Divergences or not confirmed', t.incorrect + ' failed · ' + t.inconclusive + ' not confirmed');
+  const add = (n, l, sub, href, origin) => { const x = el('a', 'dk'); x.href = href; x.append(el('b', '', n), el('span', '', l)); if (sub) x.append(el('small', '', sub)); x.append(el('em', '', origin)); strip.append(x); };
+  add(String(t.evaluated), 'Cases verified', t.correct + ' passed the verified checks', '#/', 'From the agent run · open the Cases');
+  add(String(t.incorrect + t.inconclusive), 'Divergences or not confirmed', t.incorrect + ' failed · ' + t.inconclusive + ' not confirmed', (t.incorrect + t.inconclusive) ? '#/?f=' + (t.incorrect ? 'incorrect' : 'inconclusive') : '#/', 'From the agent run · open the Cases');
   const nObs = run.by_check.length, nNot = (run.not_auditable || []).length;
-  add(nObs + ' of ' + (nObs + nNot), 'Plan conditions verified', nNot + ' declared as gaps');
+  add(nObs + ' of ' + (nObs + nNot), 'Plan conditions verified', nNot + ' declared as gaps', '#/setup', 'From the approved plan · see the setup');
   if (flow && flow.bundles) {
     const st = { open: 0, closed: 0, risk: 0 };
     flow.bundles.forEach(b => { const s = b.files.finding.state; if (s === 'closed') st.closed++; else if (s === 'risk_accepted') st.risk++; else st.open++; });
-    add(String(flow.bundles.length), 'Findings', st.closed + ' closed · ' + st.risk + ' risk accepted · ' + st.open + ' open');
+    add(String(flow.bundles.length), 'Findings', st.closed + ' closed · ' + st.risk + ' risk accepted · ' + st.open + ' open', '#/acceptance', 'From the calibration run · open the findings');
   }
   return strip;
+}
+
+function attention(run, flow) {
+  const items = [];
+  const t = run.totals;
+  if (t.incorrect) items.push(['bad', t.incorrect + ' Case' + (t.incorrect > 1 ? 's' : '') + ' failed a check', '#/?f=incorrect']);
+  if (t.inconclusive) items.push(['wait', t.inconclusive + ' Case' + (t.inconclusive > 1 ? 's' : '') + ' could not be confirmed', '#/?f=inconclusive']);
+  if (flow) flow.bundles.forEach(b => {
+    const f = b.files.finding;
+    if (f.state === 'closed') return;
+    items.push([f.state === 'risk_accepted' ? 'wait' : 'bad', f.finding_id + ' · ' + (f.state === 'risk_accepted' ? 'risk accepted, not fixed' : 'still open'), '#/acceptance?f=' + encodeURIComponent(f.finding_id)]);
+  });
+  const c = el('section', 'dcardx dattn'); c.append(el('h2', '', 'Needs attention'));
+  if (!items.length) { c.append(el('p', 'dlead', 'Nothing is open: no failed or unconfirmed Cases, and every finding is closed with evidence.')); return c; }
+  c.append(el('p', 'dlead', 'Start here. Each item opens the evidence.'));
+  const ul = el('ul', 'dalist');
+  items.forEach(([k, txt, href]) => { const li = el('li'); const a = el('a', '', txt); a.href = href; li.append(el('i', 'sw2 ' + k, k === 'bad' ? '✕' : '?'), a); ul.append(li); });
+  c.append(ul);
+  return c;
 }
 
 function byExecutor(run) {
@@ -91,23 +110,24 @@ function calibration(flow) {
   const c = card('Does the verifier catch known faults?', 'We seeded these ourselves in the Salesforce developer org, so the answer is known. It says how the verifier behaves, not how often a real agent fails.');
   const m = (label, n, of, good) => { const r = el('div', 'mrow'); r.append(el('span', '', label)); const t = el('div', 'dtrack'); const f = el('div', 'dfill ' + good); f.style.width = (of ? (n / of * 100) : 0) + '%'; t.append(f); r.append(t, el('b', '', n + ' of ' + of)); return r; };
   c.append(m('Injected faults detected', k.detected, k.injected, 'ok'), m('Correct Cases flagged by mistake', k.false_alarms, k.controls, 'bad'));
-  c.append(el('p', 'dsmall', 'Audited ' + utc(k.audited_at) + ' · ' + k.cases.length + ' Cases'));
+  const more = el('a', 'dlink', 'See each injected fault'); more.href = '#/acceptance'; const sm = el('p', 'dsmall', 'Audited ' + utc(k.audited_at) + ' · ' + k.cases.length + ' Cases · '); sm.append(more); c.append(sm);
   return c;
 }
 
 function findings(flow) {
   if (!flow || !flow.bundles.length) return null;
   const c = card('Findings and their lifecycle', 'Every divergence becomes a finding with an owner. It closes only after a new audit passes, or when someone accepts the risk in writing.');
-  const t = el('table', 'dtab'); const hr = el('tr'); ['Finding', 'Severity', 'State', 'Owner', 'Opened to resolved'].forEach(h => hr.append(el('th', '', h))); const th = el('thead'); th.append(hr); t.append(th);
+  const t = el('table', 'dtab'); const hr = el('tr'); ['Finding', 'Severity', 'State', 'Owner', 'Time'].forEach(h => hr.append(el('th', '', h))); const th = el('thead'); th.append(hr); t.append(th);
   const tb = el('tbody');
   flow.bundles.forEach(b => {
     const f = b.files.finding, ev = f.events, o = ev[0], last = ev[ev.length - 1];
     const mins = Math.round((Date.parse(last.at) - Date.parse(o.at)) / 60000);
-    const st = f.state === 'closed' ? ['Closed with evidence', 'ok'] : f.state === 'risk_accepted' ? ['Risk accepted, unresolved', 'wait'] : ['Open', 'bad'];
-    const tr = el('tr'); const a = el('td'); a.append(el('b', '', f.finding_id), document.createTextNode(' ' + f.case_id));
+    const st = f.state === 'closed' ? ['Closed with evidence', 'ok', 'Time to resolution: ' + mins + ' min'] : f.state === 'risk_accepted' ? ['Risk accepted, unresolved', 'wait', 'Time to risk acceptance: ' + mins + ' min'] : ['Open', 'bad', 'Open since ' + utc(o.at)];
+    const tr = el('tr'); const a = el('td'); const ln = el('a', 'dlink', f.finding_id); ln.href = '#/acceptance?f=' + encodeURIComponent(f.finding_id); ln.setAttribute('aria-label', 'Open dossier for ' + f.finding_id);
+    a.append(ln, el('small', 'dsub', 'Case ' + f.case_id + ' · open dossier'));
     const s = el('td'); s.append(el('span', 'tag ' + (f.severity === 'critical' ? 'critical' : 'operational'), f.severity === 'critical' ? 'Required' : 'Operational'));
     const sc = el('td'); sc.append(el('span', 'state ' + st[1], st[0]));
-    tr.append(a, s, sc, el('td', '', f.assignee || '—'), el('td', '', mins + ' min'));
+    tr.append(a, s, sc, el('td', '', f.assignee || '—'), el('td', '', st[2]));
     tb.append(tr);
   });
   t.append(tb); c.append(t);
@@ -150,13 +170,16 @@ async function show() {
   let d;
   try { d = await load(); d.live = await loadLive(); } catch (e) { const b = el('button', 'secondary', 'Try again'); b.type = 'button'; b.onclick = show; const m = el('div', 'loaderr'); m.append(el('p', '', 'Could not load the dashboard. ' + e.message), b); root.replaceChildren(m); return; }
   root.replaceChildren();
-  const head = el('div', 'dhead'); head.append(el('h1', '', 'Dashboard'), el('p', '', 'The recorded evidence at a glance: what was checked, what was found, and what is still not verified.'));
-  root.append(head, kpis(d.run, d.flow));
+  const head = el('div', 'dhead'); head.append(el('h1', '', 'Dashboard'), el('p', '', 'What was checked, what was found, and what is still not verified. Recorded evidence and live demo sessions are kept apart.'));
+  const bar = el('div', 'dupd'); const stamp = el('span', '', 'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })); stamp.setAttribute('role', 'status');
+  const rb = el('button', 'secondary', 'Refresh'); rb.type = 'button'; rb.onclick = () => { cache = null; show(); }; bar.append(stamp, rb); head.append(bar);
+  root.append(head, kpis(d.run, d.flow), attention(d.run, d.flow));
   const g = el('div', 'dgrid'), l = el('div', 'dcol'), r = el('div', 'dcol');
-  [byExecutor(d.run), calibration(d.flow), findings(d.flow)].forEach(x => { if (x) l.append(x); });
-  [coverage(d.run, d.flow), liveCard(d.live), history(d.run, d.flow)].forEach(x => { if (x) r.append(x); });
+  [findings(d.flow), byExecutor(d.run)].forEach(x => { if (x) l.append(x); });
+  [coverage(d.run, d.flow)].forEach(x => { if (x) r.append(x); });
   g.append(l, r);
-  root.append(g, el('p', 'dsmall dfoot', 'Recorded run in a Salesforce developer org, synthetic Cases only, Salesforce Ids masked.'));
+  const g2 = el('div', 'dgrid dgrid2'), l2 = el('div', 'dcol'), r2 = el('div', 'dcol'); [calibration(d.flow), liveCard(d.live)].forEach(x => { if (x) l2.append(x); }); r2.append(history(d.run, d.flow)); g2.append(l2, r2);
+  root.append(g, g2, el('p', 'dsmall dfoot', 'Recorded run in a Salesforce developer org, synthetic Cases only, Salesforce Ids masked.'));
 }
 window.AG = Object.assign(window.AG || {}, { showDashboard: show });
 if (location.hash.startsWith('#/dashboard')) show();

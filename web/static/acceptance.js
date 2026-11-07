@@ -73,7 +73,7 @@ function timeline(f) {
 }
 
 function finding(b) {
-  const f = b.files.finding, card = el('article', 'finding ' + f.state);
+  const f = b.files.finding, card = el('article', 'finding ' + f.state); card.id = 'finding-' + f.finding_id; card.tabIndex = -1;
   const head = el('div', 'f-head'); head.append(el('b', '', f.finding_id + ' · Case ' + f.case_id), el('span', 'pill', f.severity));
   card.append(head, el('p', 'f-state', STATE[f.state] || f.state), timeline(f));
   const act = el('div', 'f-actions');
@@ -111,6 +111,8 @@ async function show() {
     catch { root.replaceChildren(el('p', 'muted', 'No recorded acceptance flow has been published yet.')); return; }
   }
   render();
+  const m = location.hash.match(/[?&]f=([^&]+)/);
+  if (m) { const n = document.getElementById('finding-' + decodeURIComponent(m[1])); if (n) { n.classList.add('target'); n.scrollIntoView({ block: 'start' }); n.focus({ preventScroll: true }); } }
 }
 
 window.AG = Object.assign(window.AG || {}, { showAcceptance: show });
