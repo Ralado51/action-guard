@@ -45,3 +45,7 @@ BackgroundTasks is not a durable queue: if the process stops while a run is queu
 ## Validation status
 
 The API uses the real planner and executor; tests inject simulated transport and generation. The operator reported a real run of the CLI flow on 05/11/2026 (six checks passed). On 06/11/2026 the web UI was exercised against the real developer org with the real Vultr model: plan generation, clause coverage, Case binding, approval and a read-only audit of synthetic Cases. Real execution through this API/UI has not been run: the public deployment runs in demo mode.
+
+## Operators
+
+The shared `ACTION_GUARD_API_TOKEN` is the administrator credential. With it, `POST /api/operators` registers a named operator and returns a personal key (`agk_…`) once; only its sha256 hash is stored. `DELETE /api/operators/{id}` revokes it. `GET /api/operators` is public and lists names, roles and dates only. Every endpoint that accepts the shared token also accepts an operator key, and on plan approval the approver name is taken from the key, not from the request body. Operators are stored in `ACTION_GUARD_DATA_DIR/operators`. Roles are recorded for accountability; permissions are the same for every operator in this prototype.
