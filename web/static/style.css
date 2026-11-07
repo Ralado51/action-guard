@@ -212,3 +212,9 @@ main{padding:0 32px}#story{padding:16px 0 10px}
 @media(max-width:700px){.dhead{padding:20px 18px}.dkpis{grid-template-columns:1fr}}
 .dcount{color:var(--muted);font-size:13px;margin-left:8px}.dcol{display:grid;gap:12px;align-content:start}
 .dmini{grid-template-columns:repeat(4,1fr);margin:0 0 12px}.dmini .dk{padding:10px 12px}.dmini .dk b{font-size:24px}.dmini .dk span{font-size:12.5px}@media(max-width:700px){.dmini{grid-template-columns:1fr 1fr}}
+
+a.dk{color:inherit;text-decoration:none;display:block}a.dk:hover,a.dk:focus-visible{border-color:#262626;box-shadow:0 0 0 2px #fff56b}a.dk em{display:block;font-style:normal;font-size:11.5px;color:var(--muted);margin-top:8px;padding-top:6px;border-top:1px solid var(--line)}
+.dattn{margin-bottom:12px;border-color:#262626}.dalist{list-style:none;margin:0;padding:0;display:grid;gap:8px}.dalist li{display:flex;align-items:center;gap:10px}.dalist a{font-weight:600;color:#262626}
+.dupd{display:flex;align-items:center;gap:12px;margin-top:12px;color:#b8b8b8;font-size:13px}.dupd button{padding:4px 12px;font-size:13px}
+.dgrid2{margin-top:12px}.dlink{font-weight:700;color:#262626;text-decoration:underline;text-underline-offset:3px}.dsub{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.finding.target{outline:3px solid #fff56b;outline-offset:3px}
