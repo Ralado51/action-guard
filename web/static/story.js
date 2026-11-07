@@ -96,12 +96,6 @@ function diagram() {
     card(2, c => { c.append(el('div', 'dh', 'Second audit'), rows(S.good), el('div', 'dl', 'Finding: closed')); }),
   ];
   const g = el('div', 'dgi'); while (root.firstChild) g.append(root.firstChild); root.append(g);
-  if (reduce) {
-    root.classList.add('calm');
-    const mb = el('button', 'motion-btn', 'Motion is reduced by your system setting · Play animation'); mb.type = 'button';
-    mb.onclick = () => { root.classList.remove('calm'); mb.remove(); };
-    root.append(mb);
-  }
   let k = -1, timer = null;
   function set(n) {
     k = n; root.dataset.k = String(n);
@@ -115,8 +109,13 @@ function diagram() {
   const order = [-1, 0, 1, 2, 3, 3];
   let idx = 0; set(-1);
   const step = () => { if (!document.body.contains(root)) { clearInterval(timer); return; } if (document.hidden) return; idx = (idx + 1) % order.length; set(order[idx]); };
-  setTimeout(step, 900);
-  timer = setInterval(step, 3300);
+  let paused = false;
+  const pb = el('button', 'motion-btn', 'Pause animation'); pb.type = 'button'; pb.setAttribute('aria-pressed', 'false');
+  pb.onclick = () => { paused = !paused; pb.textContent = paused ? 'Play animation' : 'Pause animation'; pb.setAttribute('aria-pressed', String(paused)); };
+  root.append(pb);
+  const tick = () => { if (!paused) step(); };
+  setTimeout(tick, 900);
+  timer = setInterval(tick, 3300);
   return root;
 }
 
