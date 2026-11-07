@@ -76,14 +76,16 @@ function diagram() {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 1000 330'); svg.setAttribute('class', 'wires');
   const line = (d, cls) => { const p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); p.setAttribute('d', d); p.setAttribute('class', cls); svg.append(p); return p; };
   const conn = (d, g) => { line(d, 'w base'); line(d, 'w hot ' + g); const q = line(d, 'pulse ' + g); q.setAttribute('pathLength', '100'); };
-  [42, 82, 122].forEach(y => conn('M150 ' + (y + 17) + 'H175V' + (NY + 20) + 'H200', 'g0'));
+  const elbow = (x0, y0, xm, y1, x1, r) => { if (y0 === y1) return 'M' + x0 + ' ' + y0 + 'H' + x1; const sg = y1 > y0 ? 1 : -1; return 'M' + x0 + ' ' + y0 + 'H' + (xm - r) + 'Q' + xm + ' ' + y0 + ' ' + xm + ' ' + (y0 + sg * r) + 'V' + (y1 - sg * r) + 'Q' + xm + ' ' + y1 + ' ' + (xm + r) + ' ' + y1 + 'H' + x1; };
+  const ROWS = [43, 83, 123];
+  ROWS.forEach(y => conn(elbow(150, y + 17, 175, NY + 20, 200, 8), 'g0'));
   conn('M390 100H420', 'g1'); conn('M610 100H640', 'g2');
-  [42, 82, 122].forEach(y => conn('M830 100H838V' + (y + 17) + 'H848', 'g3'));
+  ROWS.forEach(y => conn(elbow(830, NY + 20, 836, y + 17, 848, 5), 'g3'));
   NX.forEach((x, i) => { line('M' + x + ' 48V' + NY, 'w dot dt' + i); line('M' + x + ' ' + (NY + 40) + 'V158', 'w dot db' + i); });
   root.append(svg);
-  const srcs = [['sheet', 'Approved rule', 42], ['db', 'Salesforce record', 82], ['chat', 'Agent’s report', 122]].map(([ic, t, y]) => { const c = chip('src', ic, t, 10, y, 140); root.append(c); return c; });
+  const srcs = [['sheet', 'Approved rule', 43], ['db', 'Salesforce record', 83], ['chat', 'Agent’s report', 123]].map(([ic, t, y]) => { const c = chip('src', ic, t, 10, y, 140); root.append(c); return c; });
   const nodes = [['search', 'Read-only audit'], ['scale', 'Decision'], ['wrench', 'Fix and re-check']].map(([ic, t], i) => { const n = chip('node n' + i, ic, t, NX[i], NY, 190); root.append(n); return n; });
-  const outs = [['file', 'Evidence dossier', 'o-blue', 42], ['list', 'Findings log', 'o-tan', 82], ['check', 'Decision', 'o-green', 122]].map(([ic, t, c, y]) => { const o = chip('out ' + c, ic, t, 848, y, 150); root.append(o); return o; });
+  const outs = [['file', 'Evidence dossier', 'o-blue', 43], ['list', 'Findings log', 'o-tan', 83], ['check', 'Decision', 'o-green', 123]].map(([ic, t, c, y]) => { const o = chip('out ' + c, ic, t, 848, y, 150); root.append(o); return o; });
   const metrics = ['3 conditions checked on the real record', '1 required condition not met: result not accepted', 'A finding closes only after a second audit'];
   const mets = metrics.map((t, i) => { const m = el('div', 'metric m' + i, t); m.style.cssText = 'left:' + ((NX[i] + 8) / 10) + '%;top:' + (2 / 3.3) + '%;width:' + 19 + '%'; root.append(m); return m; });
   const card = (i, build) => { const c = el('div', 'dcard c' + i); c.style.cssText = 'left:' + (NX[i] / 10) + '%;top:' + (158 / 3.3) + '%;width:' + (205 / 10) + '%'; build(c); root.append(c); return c; };
@@ -102,7 +104,7 @@ function diagram() {
     srcs.forEach(x => x.classList.toggle('lit', n === 0));
     mets.forEach((x, i) => x.classList.toggle('on', i === n || (n === 3)));
     cards.forEach((x, i) => x.classList.toggle('on', i === n || (n === 3)));
-    outs.forEach((x, i) => x.classList.toggle('lit', n === 3 || (n >= 0 && i <= n && n !== 3 && i < n + 0)));
+    outs.forEach(x => x.classList.toggle('lit', n === 3));
     root.classList.toggle('s1', n >= 1 || n === 3); root.classList.toggle('s2', n >= 2 || n === 3); root.classList.toggle('s3', n === 3);
   }
   const order = [0, 1, 2, 3, 3, -1];
