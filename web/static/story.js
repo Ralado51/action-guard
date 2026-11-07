@@ -107,9 +107,11 @@ function diagram() {
     outs.forEach(x => x.classList.toggle('lit', n === 3));
     root.classList.toggle('s1', n >= 1 || n === 3); root.classList.toggle('s2', n >= 2 || n === 3); root.classList.toggle('s3', n === 3);
   }
-  const order = [0, 1, 2, 3, 3, -1];
-  let idx = 0; set(order[0]);
-  timer = setInterval(() => { if (!document.body.contains(root)) { clearInterval(timer); return; } if (document.hidden) return; idx = (idx + 1) % order.length; set(order[idx]); }, 3600);
+  const order = [-1, 0, 1, 2, 3, 3];
+  let idx = 0; set(-1);
+  const step = () => { if (!document.body.contains(root)) { clearInterval(timer); return; } if (document.hidden) return; idx = (idx + 1) % order.length; set(order[idx]); };
+  setTimeout(step, 900);
+  timer = setInterval(step, 3300);
   return root;
 }
 
