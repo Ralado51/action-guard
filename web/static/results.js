@@ -250,6 +250,7 @@ async function route() {
   ['story', 'live', 'dashboard', 'operators', 'results', 'case', 'setup', 'acceptance'].forEach(v => { $('#view-' + v).hidden = v !== view; });
   ['story', 'live', 'dashboard', 'operators', 'results', 'acceptance', 'setup'].forEach(t => { const on = (t === 'results') ? (view === 'results' || view === 'case') : view === t; $('#tab-' + t).classList.toggle('on', on); $('#tab-' + t).toggleAttribute('aria-current', on); });
   const fm = view === 'results' && h.match(/[?&]f=(incorrect|inconclusive|correct)\b/); if (fm) { filter = fm[1]; recLimit = REC_PAGE; recQuery = ''; }
+  { const tp = $('#tab-plan'); if (tp) { tp.classList.toggle('on', view === 'setup'); tp.toggleAttribute('aria-current', view === 'setup'); } }
   const seq = ++routeSeq;
   if (view === 'case') { const ld = el('p', 'loading', 'Loading Case evidence…'); ld.setAttribute('role', 'status'); $('#case-detail').replaceChildren(ld); }
   if (view === 'setup') return;
