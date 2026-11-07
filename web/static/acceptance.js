@@ -28,10 +28,17 @@ function calibration(c) {
   const box = el('section', 'acc-block');
   box.append(el('h2', '', 'Does the verifier catch real problems?'));
   box.append(el('p', 'lead', 'We put ' + c.injected + ' known faults and ' + c.controls + ' correct Cases into the Salesforce developer org and audited them with the same approved plan. It flagged ' + c.detected + ' of ' + c.injected + ' faults and ' + c.false_alarms + ' of ' + c.controls + ' correct Cases.'));
-  const t = el('table', 'ef');
-  const hr = el('tr'); ['Case', 'What we injected', 'Expected', 'Verifier said'].forEach(h => hr.append(el('th', '', h))); const th = el('thead'); th.append(hr); t.append(th);
+  const t = el('table', 'ef inj');
+  const hr = el('tr'); ['Case', 'What we injected', 'What the record showed', 'Verifier'].forEach(h => hr.append(el('th', '', h))); const th = el('thead'); th.append(hr); t.append(th);
   const tb = el('tbody');
-  c.cases.forEach(x => { const tr = el('tr', x.ok ? 'passed' : 'failed'); tr.append(el('td', '', x.label.replace(/_/g, ' ')), el('td', '', x.fault || 'Nothing (control)'), el('td', '', x.expected), el('td', 'res', x.detected_status + (x.failed_checks.length ? ' · ' + x.failed_checks.map(i => i.replace('chk_', '').replace(/_/g, ' ')).join(', ') : ''))); tb.append(tr); });
+  const SHOW = { chk_status_closed: 'Case not closed', chk_reason_filled: 'Missing closure reason', chk_followup_task: 'Follow-up Task not as agreed' };
+  c.cases.forEach(x => {
+    const fault = x.expected === 'incorrect', tr = el('tr');
+    const shown = x.failed_checks.length ? x.failed_checks.map(i => SHOW[i] || i.replace('chk_', '').replace(/_/g, ' ')).join(', ') : 'All verified conditions met';
+    const verdict = x.ok ? (fault ? 'Detected as expected' : 'Correct, as expected') : (fault ? 'Missed the fault' : 'False alarm');
+    tr.append(el('td', '', x.label.replace(/_/g, ' ')), el('td', '', x.fault || 'Nothing (control)'), el('td', x.failed_checks.length ? 'bad-txt' : '', shown), el('td', x.ok ? 'ok-txt' : 'bad-txt', verdict));
+    tb.append(tr);
+  });
   t.append(tb); box.append(t);
   box.append(el('p', 'muted', 'Audited ' + c.audited_at.replace('T', ' ').replace('Z', ' UTC') + '. The faults were seeded by us, with a known answer. This shows how the verifier behaves on known faults; it does not say how often a real agent fails.'));
   return box;
