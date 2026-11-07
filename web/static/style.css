@@ -124,3 +124,11 @@ footer{border-color:var(--line)}
 @media(max-width:700px){.verdict{padding:30px 20px 24px}.announce{font-size:12px}}
 
 .diag.calm .metric,.diag.calm .dcard{transform:none;transition:none}.diag.calm .dn,.diag.calm .hot,.diag.calm .dn.out{transition:none}
+
+.synthetic-flag,.banner-partial{background:#f4f4f2;border:0;border-left:4px solid #8a8a8a;color:#333}
+.verdict h1{font-size:clamp(26px,3.4vw,40px)!important;letter-spacing:-1px!important}
+.vstats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:22px 0 4px}.vstat{background:#323232;border-radius:12px;padding:16px 18px}.vstat b{display:block;font:600 32px/1.1 system-ui,sans-serif;color:#fff}.vstat span{display:block;margin-top:6px;font-size:13px;color:#b8b8b8}
+.live-hero{padding:26px 32px 22px!important}.live-hero h1{font-size:clamp(28px,3.6vw,40px)!important;margin-bottom:10px!important}.live-hero .st-lead{margin:0 0 14px!important;font-size:16px}
+.agree{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px}.agree-k{color:#b8b8b8;font-size:13px;margin-right:4px}.agree-c{background:#fff;color:#1c1c1c;border-radius:8px;padding:7px 12px;font-size:13.5px;font-weight:600}.agree-n{font-size:13px;margin:12px 0 0!important}
+.diag .dgi{font-size:max(10.5px,1.25cqw)}
+@media(max-width:700px){.vstats{grid-template-columns:1fr}.live-hero{padding:22px 18px!important}}

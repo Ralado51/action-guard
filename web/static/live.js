@@ -58,9 +58,9 @@ function agreement() {
 }
 
 function startForm() {
-  const w = el('div', 'live'); w.append(agreement());
+  const w = el('div', 'live');
   const f = el('form', 'live-form card');
-  f.append(el('h3', '', 'You are the customer'));
+  f.append(el('h3', '', 'You are the support analyst'));
   const lc = el('label', '', 'Access code'); lc.setAttribute('for', 'live-code');
   const code = el('input'); code.id = 'live-code'; code.type = 'password'; code.autocomplete = 'off'; code.required = true;
   f.append(lc, code);
@@ -89,7 +89,7 @@ function session() {
   const d = el('div', 'live');
   const v = view;
   d.append(progress(v)); d.append(agreement());
-  const t = el('section', 'card'); t.append(el('h3', '', 'You are the customer'), el('p', 'muted', 'Fixed entry, chosen from a list · ' + (v.case_label ? 'Case ' + v.case_label : 'no Case created')));
+  const t = el('section', 'card'); t.append(el('h3', '', 'You are the support analyst'), el('p', 'muted', 'Fixed entry, chosen from a list · ' + (v.case_label ? 'Case ' + v.case_label : 'no Case created')));
   t.append(el('p', 'quote', '“' + v.scenario.text + '”')); d.append(t);
   if (v.state === 'failed') { d.append(el('p', 'banner bad', v.error || 'This session failed.')); d.append(button('Start over', 'quiet', () => { store.set(null); view = null; draw(); })); return d; }
 
@@ -127,7 +127,13 @@ function session() {
 
 function draw() {
   const root = $('#live'); root.replaceChildren();
-  const h = el('div', 'st-hero'); h.append(el('h1', '', 'Try it on a live Case'), el('p', 'st-lead', 'Record a handled ticket, then check the Salesforce record.')); root.append(h);
+  const h = el('div', 'st-hero live-hero'); h.append(el('h1', '', 'Try it on a live Case'), el('p', 'st-lead', 'Record a handled ticket, then check the Salesforce record.'));
+  if (status && status.enabled && !view) {
+    const st = el('div', 'agree'); st.append(el('span', 'agree-k', 'The agent must'));
+    ['Close the Case', 'Record a closure reason', 'Create one follow-up Task'].forEach(t => st.append(el('span', 'agree-c', t)));
+    h.append(st, el('p', 'muted agree-n', 'Action Guard checks these three conditions in the record. It does not judge whether the customer’s issue was resolved.'));
+  }
+  root.append(h);
   if (!status) { root.append(el('p', 'muted', 'Checking whether the live demo is available…')); return; }
   if (!status.enabled) {
     root.append(el('p', 'st-lead', 'The live demo is switched off right now. The recorded walkthrough shows the same flow with real recorded data.'));

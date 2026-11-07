@@ -163,6 +163,9 @@ function overview(d) {
   if (bad) sub.push(bad + ' failed at least one');
   if (unc) sub.push(unc + ' cannot be confirmed');
   head.append(el('p', 'tally', (sub.length ? sub.join(' and ') + '. ' : '') + 'Rate: ' + pct(d.outcome_rate) + '. Unconfirmed Cases never count as correct.' + (d.not_auditable && d.not_auditable.length ? ' ' + d.not_auditable.length + ' checks in the plan are not verified here, so this is not a full verdict on the rule.' : '')));
+  const stats = el('div', 'vstats'); const nObs = d.by_check.length, nNot = (d.not_auditable || []).length;
+  [[String(d.agent_reported), 'Cases verified'], [String(bad + unc), 'divergences' + (unc ? ' or unconfirmed' : '')], [nObs + ' of ' + (nObs + nNot), 'plan conditions verified']].forEach(([n, l]) => { const x = el('div', 'vstat'); x.append(el('b', '', n), el('span', '', l)); stats.append(x); });
+  head.append(stats);
   root.append(head);
   root.append(basisLine(d));
   root.append(strip(d));

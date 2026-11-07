@@ -112,11 +112,12 @@ function diagram() {
 function hero() {
   const d = el('section', 'st-hero');
   d.append(el('h1', '', 'An AI agent says the work is done. Would you accept it?'));
-  d.append(el('p', 'st-lead', 'Action Guard checks the Salesforce record against the agreed rule, not the agent’s word, and keeps a record of the decision to accept the result or investigate it.'));
-  const b = el('button', 'primary', 'Step through it in detail'); b.type = 'button'; b.onclick = () => go(1);
+  d.append(el('p', 'st-lead', 'Check what the agent actually changed in Salesforce. Accept the result, or investigate, with evidence.'));
+  const b = el('button', 'quiet', 'See how it works'); b.type = 'button'; b.onclick = () => go(1);
   d.append(b);
-  const tl = el('a', 'quiet linkbtn', 'Try it on a live Case'); tl.href = '#/live'; tl.hidden = true; d.append(tl);
-  fetch('/api/live/status', { cache: 'no-store' }).then(r => r.json()).then(j => { tl.hidden = !j.enabled; }).catch(() => {});
+  const tl = el('a', 'primary linkbtn', 'Try it live'); tl.href = '#/live'; tl.hidden = true; d.insertBefore(tl, b);
+  b.className = 'primary';
+  fetch('/api/live/status', { cache: 'no-store' }).then(r => r.json()).then(j => { tl.hidden = !j.enabled; if (j.enabled) b.className = 'quiet'; }).catch(() => {});
   if (S && S.bad) { d.append(diagram()); const pm = player(); pm.classList.add('pmobile'); d.append(pm); }
   if (S && S.cal) {
     const c = S.cal, st = el('div', 'stats');
