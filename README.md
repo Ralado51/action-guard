@@ -40,7 +40,7 @@ before/after snapshots ──► deterministic engine ──► evidence report
 
 Verified:
 
-- 465 automated tests pass (Python 3.12 and 3.13) with Salesforce and Vultr **simulated**. Several safety guards were mutation-checked.
+- 473 automated tests pass (Python 3.12 and 3.13) with Salesforce and Vultr **simulated**. Several safety guards were mutation-checked.
 - Against a real Salesforce developer org (synthetic data only), the operator reported running the full CLI flow once: plan from real Describe metadata, Case binding, hash approval, Agentforce execution, six checks `passed`.
 - Plan generation with the real Vultr model and real Describe metadata works end to end in the web UI. The server correctly downgraded the clause *"Verify the changes using the before and after data"* to **not verified**.
 - A Vultr-hosted agent handled 10 synthetic Cases in the real developer org through guarded tools (close and create-task are separate calls); the Agentforce agent handled 10 other synthetic Cases. The read-only audit, with the same approved plan, found all 20 meeting every auditable check (3 plan checks are not auditable). A pilot of 1 Case came first. These are small runs with different agent instructions: they show the pipeline works with two executors and are not a comparison or a failure rate. They are published as a recorded run with executor labels and Salesforce Ids masked.
@@ -89,6 +89,15 @@ python -m audit run --plan approved_plan.json --case-ids ids.txt --explain
 
 Besides Agentforce, a small agent hosted on Vultr (`vultr_agent/`) can handle the same process through guarded tools; Action Guard audits both with the same approved plan. See [`docs/AGENT.md`](docs/AGENT.md).
 
+## Live demo, findings, dashboard, operators
+
+- **Live demo** (`#/live`, behind an access code): each session gets its own `[SYNTHETIC]` Case in a developer org. Run a controlled fault (audit detects it, a finding opens, the fix is revalidated) or let the Vultr agent act, then replay its steps. Limits per hour and per day apply; real execution on the public instance stays blocked otherwise. See [`docs/LIVE_DEMO.md`](docs/LIVE_DEMO.md).
+- **Findings and dossiers:** every divergence becomes a finding with an owner and an event log (opened, assigned, fix recorded, revalidated, closed, or risk accepted in writing). Evidence ships as a dossier with a SHA-256 manifest. See [`docs/ACCEPTANCE.md`](docs/ACCEPTANCE.md).
+- **Dashboard** (`#/dashboard`): what needs attention first, findings with owners, what the audit verifies and what is declared as a gap, calibration, and live activity kept apart from the recorded run.
+- **Operators:** the admin (shared token) registers named operators; each gets a personal key shown once (only its SHA-256 is stored). The approver name comes from the key. See [`docs/API.md`](docs/API.md).
+
+Calibration is labeled: faults are injected by us (4 of 4 detected, 0 of 3 false alarms). It shows how the verifier behaves, not how often real agents fail.
+
 ## Layout
 
 | Folder | Content |
@@ -104,6 +113,6 @@ Besides Agentforce, a small agent hosted on Vultr (`vultr_agent/`) can handle th
 
 ## Security notes
 
-Synthetic data only. No credentials in the repository. The LLM never sees Salesforce credentials, never approves a plan and never produces a verdict; the audit summary it may write receives counts only (no record Ids or values) and is validated against the numbers, with the server-generated text always shown next to it. A single shared access token identifies the operator: this is not multi-user authentication.
+Synthetic data only. No credentials in the repository. The LLM never sees Salesforce credentials, never approves a plan and never produces a verdict; the audit summary it may write receives counts only (no record Ids or values) and is validated against the numbers, with the server-generated text always shown next to it. The shared access token is the admin credential. Operators have personal keys for accountability (the approver name comes from the key); this is not full multi-user authentication or role-based access control.
 
 License: MIT.

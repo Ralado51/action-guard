@@ -81,7 +81,7 @@ function startForm() {
 }
 
 function progress(v) {
-  const done = [!!v.case_label, ['agent_done', 'uncertain', 'fixed'].includes(v.state), v.reports.length > 0, v.reports.length > 0];
+  const done = [!!v.case_label, ['agent_done', 'uncertain', 'fixed', 'revalidation_failed'].includes(v.state), v.reports.length > 0, v.reports.length > 0];
   const names = ['Case created', v.mode === 'agent' ? 'Agent acted' : 'Fault applied', 'Checked', 'Decision'];
   const n = el('nav', 'chain'); n.setAttribute('aria-label', 'Progress');
   names.forEach((t, i) => { const b = el('span', 'node' + (done[i] ? ' done' : '') + (done[i] && !done[i + 1] ? ' on' : ''), t); n.append(b); });
@@ -108,7 +108,7 @@ function session() {
   }
   d.append(h);
 
-  const can = ['agent_done', 'uncertain', 'fixed'].includes(v.state);
+  const can = ['agent_done', 'uncertain', 'fixed', 'revalidation_failed'].includes(v.state);
   const c = el('section', 'card'); c.append(el('h3', '', 'Now check as operations'));
   if (!v.reports.length) { c.append(el('p', 'muted', can ? 'Action Guard reads the Case in Salesforce and compares it with the approved conditions. Nothing is written.' : 'Available once the ticket has been handled.')); if (can) c.append(button('Check this ticket', 'primary', () => act(() => api('/sessions/' + v.session_id + '/check', {})))); }
   else {
