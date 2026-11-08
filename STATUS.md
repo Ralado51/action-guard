@@ -1,50 +1,37 @@
 # STATUS
 
-Atualizado em 05/11/2026 (branch `fix/review-hardening-coverage`). Cada ferramenta le este arquivo no inicio de uma sessao e o atualiza ao entregar algo.
+Atualizado em 08/11/2026, dia do prazo (envio ate 20:00, horario de Brasilia). Cada ferramenta le este arquivo no inicio de uma sessao e o atualiza ao entregar algo.
 
-Repositorio: https://github.com/Ralado51/action-guard (publico). Dados sinteticos apenas; nenhum segredo, dominio de org, Agent ID ou IP no repositorio.
+Repositorio: https://github.com/Ralado51/action-guard (publico). Dados sinteticos apenas; nenhum segredo, codigo de acesso, chave de operador, dominio de org, Agent ID ou IP no repositorio. Segredos ficam no arquivo de ambiente privado da VM.
 
 ## Estado atual
 
-- **Produto:** Action Guard verifica se uma acao executada por um agente Agentforce produziu o resultado de negocio esperado, com evidencia antes/depois, verificacoes deterministicas e plano aprovado por hash. Processo do MVP: somente `close_case`. Nao ampliar para outros processos agora.
-- **Nucleo (manter):** `engine/` (verificacoes deterministicas), `connector/` + `orchestrator/` (execucao unica, sem retry), evidencias e aprovacao por hash.
-- **Planner Vultr:** traduz a regra em plano; o servidor impoe invariantes. Agora tambem declara **cobertura da regra por clausula** (ver `docs/PLANNER.md`): o relatorio diz quais partes da regra NAO sao verificadas. Verde significa "as verificacoes listadas passaram", nao "a regra inteira foi cumprida".
-- **Interface/API (`web/`):** gerar, vincular Case, revisar, confirmar cobertura por clausula, aprovar hash, executar, ver relatorio. Estados de execucao: queued/running/completed/error/**blocked** (nada enviado ao agente).
-- **Auditoria (nova, `docs/AUDIT.md`):** modo somente leitura que mede, sobre Cases informados pelo agente ou encerrados numa janela, quantos atendem as verificacoes auditaveis do plano aprovado (taxa, falhas por verificacao, evidencia, o que nao e auditavel). CLI `python -m audit run`, rota `POST /api/audits` e painel 05 na interface. So testada com Salesforce/Vultr simulados; nenhuma auditoria na org real.
-- **Sandbox (PR #5, fora desta base):** material de demonstracao/reavaliacao offline opcional. Isola um avaliador fixo sobre dados produzidos pelo backend; nao isola codigo gerado por LLM e nao sustenta "Blast Radius Zero". Integracao automatica adiada.
-- **Trilha do hackathon:** nao confirmada; conferir o regulamento. Comercializacao e hipotese.
-
-- **Idioma (06/11/2026, branch `feat/english-ui`):** interface, mensagens da API, prompt do planner, relatorios, exemplos de contrato e README passaram para ingles (hackathon internacional). A regra pode ser escrita em ingles ou portugues; as travas de cobertura sao bilingues (12 regras rotuladas em ingles). Docs internos (`STATUS`, `DECISIONS`, `ALINHAMENTO`, `SALESFORCE_*`) e as `description` dos JSON Schemas continuam em portugues; o campo `text_pt`/`rule_text_pt` mantem o nome por compatibilidade.
+- **Produto:** Action Guard verifica se a acao de um agente (Agentforce ou agente hospedado na Vultr) produziu o resultado esperado no Salesforce, com auditoria somente leitura do estado final, plano aprovado por hash e achados com dono. Processo unico: encerrar Case. Nao ampliar.
+- **Na main (tudo mergeado, PRs ate #44):** planner Vultr com cobertura por clausula; motor deterministico; execucao unica sem retry; auditoria somente leitura; achados com historico (aberto, atribuido, correcao, revalidacao, fechado ou risco aceito) e dossie com manifesto SHA-256; demo ao vivo com sessoes isoladas e Case sintetico por sessao; replay das acoes do agente; Dashboard; cadastro de operadores com chave pessoal (so o hash e guardado); pagina de Setup em leitura quando deslogado; logo e favicon.
+- **Demo publica:** https://guard.jjnetwork.com.br em modo demonstracao (execucao real bloqueada; a demo ao vivo e habilitada a parte, com codigo de acesso, limites por hora e por dia, Cases `[SYNTHETIC]`).
+- **Trilha do hackathon:** a confirmar com o regulamento. Comercializacao e hipotese, sem entrevistas feitas.
+- **PR #5 (sandbox offline):** aberto, fora da entrega. Nao sustenta "Blast Radius Zero".
 
 ## Verificado (com evidencia)
 
-- **396 testes passando** em Python 3.12.3 e 3.13, com Salesforce e Vultr **simulados**. Mutacoes verificadas nas travas novas (normalizacao de Id, reserva por 15 caracteres, Task extra, travas de cobertura).
-- Operador, com org real e CLI (registros anteriores a esta branch): plano Vultr com Describe, vinculo de Case, aprovacao por hash, execucao Agentforce, seis verificacoes `passed`; `make docker-test` na VM (197 testes na epoca); fumaca real do planner (deepseek-v4.1-flash-1017, 1 chamada, ~1,4-1,7 mil tokens). Evidencia informada pelo operador, nao reexecutada por mim.
-- Conjunto rotulado de cobertura (`tests/data/rule_coverage_labeled.json`, 20 regras, 33 clausulas): modelo-oraculo simulado acerta 33/33; modelo "otimista" simulado (declara tudo coberto) so produz 2 falsas coberturas, ambas lacunas conhecidas e marcadas `known_gap`.
+- **473 testes passando** (Python 3.12), com Salesforce e Vultr simulados. Os dois bugs de contagem da demo ao vivo achados na revisao (teste inconclusivo contado como falha detectada; revalidacao falhada contada como corrigida) estao corrigidos e cobertos por testes.
+- **20 Cases sinteticos auditados na org real:** 10 por agente Vultr e 10 por Agentforce, todos atendem as verificacoes auditaveis. Amostras pequenas, instrucoes diferentes: nao e comparacao nem taxa de falha.
+- **Calibracao:** 4 de 4 falhas injetadas detectadas, 0 de 3 alarmes falsos. Falhas injetadas por nos; mostra o comportamento do verificador, nao a frequencia de falha de agentes reais.
+- **Ciclo de achado gravado:** um fechado com evidencia (F-034e472f) e um com risco aceito (F-4ad0fe1f).
+- Fluxo completo pelo CLI na org real com Case sintetico, seis verificacoes `passed` (informado pelo operador, nao reexecutado).
 
 ## Nao verificado / limites conhecidos
 
-- **Nenhuma chamada real a Vultr para cobertura.** A qualidade do modelo real nessa tarefa so existe depois de rodar `python -m planner.coverage_eval tests/data/rule_coverage_labeled.json --fixture-metadata` (ou `--metadata`) na VM. Os testes usam modelo simulado.
-- `make docker-test` desta versao nao foi executado. API/UI atuais nao foram testadas contra a org real nem em navegador real.
-- A cobertura por vocabulario e finita: clausulas com redacao fora do vocabulario conhecido sao rebaixadas (seguro), mas uma clausula sobre algo nao monitorado, redigida com palavras de um check existente, pode ser marcada coberta (lacunas `known_gap`). A confirmacao humana por clausula e a ultima barreira.
-- Escopo monitorado: nada fora do Case e das Tasks vinculadas e observado. Task extra vinculada ao Case que nao case com o esperado gera aviso; Tasks nao vinculadas ao Case nao sao vistas.
-- O polling para no primeiro snapshot em que tudo passa; efeitos tardios depois disso nao sao capturados.
-- O Flow nao e idempotente; `uncertain` exige revisao humana. Reserva so protege o mesmo banco/volume. BackgroundTasks nao e fila duravel.
-- `containment_events` do relatorio ficam vazios sem sandbox.
+- Apenas 3 das 6 condicoes do plano sao auditaveis no estado final. As outras 3 sao lacunas declaradas: "motivo igual ao esperado" precisa do motivo esperado por Case; "dono inalterado" e "nenhuma mudanca inesperada" precisam do estado anterior. Aprovado significa que as verificacoes listadas passaram, nao que a regra inteira foi cumprida nem que o problema do cliente foi resolvido.
+- Nenhuma falha espontanea de agente real foi observada.
+- Nao ha sandbox para codigo gerado por modelo; o projeto nao afirma isso.
+- So o Case e as Tasks vinculadas sao observados; efeitos tardios depois do primeiro estado aprovado nao sao capturados.
+- Cobertura por vocabulario finito; a confirmacao humana por clausula e a ultima barreira.
+- Operadores sao responsabilizacao por nome, nao autenticacao multiusuario nem controle de papeis.
+- O Flow nao e idempotente; `uncertain` exige revisao humana. CI no GitHub (`.github/workflows/tests.yml`, Python 3.12 e 3.13) roda a suite a cada push e PR; o primeiro resultado so existe depois do merge deste PR.
 
-## Pendencias reais
+## Pendencias (envio ate 20:00)
 
-- Rodar a auditoria na org real (somente leitura, exige sua execucao na VM) com Cases sinteticos, alguns com defeito, e registrar o resultado.
-- Rodar a avaliacao de cobertura com o modelo real e registrar resultados (falsa cobertura deve ser 0).
-- Demo: mostrar primeiro a falha real do motivo vazio (exige versao defeituosa do Flow ou flag, e aprovacao explicita para execucao real), depois o fluxo corrigido.
-- Decidir trilha; decidir estrategia de merge (sugestao: consolidar #2-#4 e esta branch, deixar #5 fora).
-- Licenca/titularidade (LICENSE) e questao contratual do Airton.
-
-## Historico resumido
-
-- Revisao dos portoes Salesforce: Case ID obrigatorio, snapshot anterior completo, `done` booleano no REST.
-- Motor deterministico ligado ao orquestrador; validacao Docker na VM (197 testes, informado pelo operador).
-- Integracao real validada pelo operador (seis checks passed em Case sintetico; nao reexecutar esse Case).
-- Planner Vultr, fumaca real, Describe real, CLI integrado `prepare/run`.
-- API/UI assumidas pelo Codex (SQLite, reserva por org/Case).
-- Revisao critica: normalizacao de Ids 15/18, header nao ASCII, erros genericos, aviso de Task extra, estado `blocked`, cobertura da regra (esta branch).
+- Airton: cadastrar o operador "Judge", pôr chave e codigo de acesso nas notas da submissao (nunca no repositorio); testar a demo ao vivo; conferir o deploy na VM (`git log -1` igual ao da main).
+- Submissao: video (ate 5 min), slides em PDF, capa 16:9, texto e tecnologias do formulario (tirar AgentOps e Aiml; incluir Vultr, Salesforce, Agentforce, Python, FastAPI, Docker).
+- Depois do julgamento: trocar token e codigo, revogar operadores de teste, baixar limites ou desligar a demo ao vivo, limpar Cases `[SYNTHETIC]`.

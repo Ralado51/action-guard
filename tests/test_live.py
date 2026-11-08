@@ -191,3 +191,25 @@ def test_activity_is_aggregate_only(env):
     a = c.get("/api/live/activity").json()
     assert a["sessions"] == 1 and a["faults_injected"] == 1 and a["faults_detected"] == 1
     assert not IDS.search(json.dumps(a)) and CODE not in json.dumps(a)
+
+
+def test_inconclusive_check_is_not_counted_as_a_detected_fault(env):
+    demo, org, clock, calls, c, cfg, tmp = env
+    sid = start(c, mode="verifier_test").json()["session_id"]
+    s = demo._load(sid)
+    s["reports"] = [{"cases": [{"status": "inconclusive"}]}]
+    demo._save(s)
+    a = c.get("/api/live/activity").json()
+    assert a["faults_injected"] == 1 and a["faults_detected"] == 0 and a["faults_inconclusive"] == 1
+
+
+def test_failed_revalidation_is_not_counted_as_fixed(env, monkeypatch):
+    demo, org, clock, calls, c, cfg, tmp = env
+    sid = start(c, mode="verifier_test").json()["session_id"]
+    chk = c.post(f"/api/live/sessions/{sid}/check").json()
+    failing = dict(demo._load(sid)["reports"][0], audit_id="audit-after-fix", generated_at="2999-01-01T00:00:00Z")
+    monkeypatch.setattr(demo, "_audit", lambda s: failing)               # a new audit that still fails
+    out = c.post(f"/api/live/sessions/{sid}/fix").json()
+    assert out["state"] == "revalidation_failed" and out["finding"]["state"] == "revalidation_failed"
+    a = c.get("/api/live/activity").json()
+    assert a["fixed"] == 0

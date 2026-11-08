@@ -234,7 +234,7 @@ class LiveDemo:
 
     def check(self, sid: str) -> dict[str, Any]:
         s = self._load(sid)
-        if s["state"] not in ("agent_done", "uncertain", "fixed"):
+        if s["state"] not in ("agent_done", "uncertain", "fixed", "revalidation_failed"):
             raise LiveError(409, "There is nothing to check yet.")
         if s["checks"] >= MAX_CHECKS:
             raise LiveError(429, "Check limit reached for this session.")
@@ -274,7 +274,10 @@ class LiveDemo:
             if store.state(fid)["state"] == "revalidated":
                 store.close(fid, "Demo visitor")
             s["finding"] = store.state(fid)
-            s["state"] = "fixed"
+            if s["finding"]["state"] == "closed":
+                s["state"] = "fixed"
+            else:
+                s["state"], s["error"] = "revalidation_failed", "The new audit did not pass, so the finding stays open. It is not counted as fixed."
         except (FindingError, AuditBlocked, QueryError, LiveError) as e:
             s["state"], s["error"] = "agent_done", "The fix could not be completed: " + (e.message if isinstance(e, LiveError) else str(e))[:160]
         self._save(s)
@@ -284,7 +287,7 @@ class LiveDemo:
         """Public, aggregate-only summary of past sessions: no codes, no Case Ids, no agent text."""
         with self._c() as db:
             rows = db.execute("SELECT body FROM sessions ORDER BY created DESC").fetchall()
-        items, agg = [], {"sessions": 0, "checked": 0, "agent_passed": 0, "agent_failed": 0, "faults_injected": 0, "faults_detected": 0, "fixed": 0, "errors": 0}
+        items, agg = [], {"sessions": 0, "checked": 0, "agent_passed": 0, "agent_failed": 0, "agent_inconclusive": 0, "faults_injected": 0, "faults_detected": 0, "faults_inconclusive": 0, "fixed": 0, "errors": 0}
         for (raw,) in rows:
             s = json.loads(raw); agg["sessions"] += 1
             sts = [r["cases"][0]["status"] for r in s.get("reports", []) if r.get("cases")]
@@ -292,10 +295,11 @@ class LiveDemo:
             if sts: agg["checked"] += 1
             if s["state"] == "failed": agg["errors"] += 1
             if s["mode"] == "agent" and first:
-                agg["agent_passed" if first == "correct" else "agent_failed"] += 1
+                agg["agent_passed" if first == "correct" else "agent_failed" if first == "incorrect" else "agent_inconclusive"] += 1
             if s["mode"] == "verifier_test" and first:
                 agg["faults_injected"] += 1
-                if first != "correct": agg["faults_detected"] += 1
+                if first == "incorrect": agg["faults_detected"] += 1
+                elif first != "correct": agg["faults_inconclusive"] += 1
             if s["state"] == "fixed": agg["fixed"] += 1
             if len(items) < 8:
                 items.append({"at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(s["created"])), "mode": s["mode"],

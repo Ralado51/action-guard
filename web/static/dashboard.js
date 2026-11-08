@@ -141,12 +141,13 @@ function liveCard(a) {
   const strip = el('div', 'dkpis dmini');
   const add = (n, l) => { const x = el('div', 'dk'); x.append(el('b', '', String(n)), el('span', '', l)); strip.append(x); };
   add(a.sessions, 'Sessions'); add(a.faults_detected + ' of ' + a.faults_injected, 'Controlled faults detected');
-  add(a.agent_passed + ' of ' + (a.agent_passed + a.agent_failed), 'Agent runs passed'); add(a.fixed, 'Fixed and revalidated');
+  add(a.agent_passed + ' of ' + (a.agent_passed + a.agent_failed + a.agent_inconclusive), 'Agent runs passed'); add(a.fixed, 'Fixed and revalidated');
   c.append(strip);
   const t = el('table', 'dtab'); const hr = el('tr'); ['When', 'Type', 'Scenario', 'First check', 'Now'].forEach(h => hr.append(el('th', '', h))); const th = el('thead'); th.append(hr); t.append(th);
   const tb = el('tbody');
   a.recent.forEach(x => { const tr = el('tr'); const v = k => k ? el('td', '', VERD[k] || k) : el('td', '', '—'); tr.append(el('td', '', utc(x.at).slice(5, 16)), el('td', '', MODE[x.mode] || x.mode), el('td', '', x.scenario), v(x.first), v(x.last)); tb.append(tr); });
   t.append(tb); c.append(t);
+  if (a.agent_inconclusive || a.faults_inconclusive) c.append(el('p', 'dsmall', (a.agent_inconclusive + a.faults_inconclusive) + ' check(s) were inconclusive. They are not counted as detected or as failed.'));
   if (a.errors) c.append(el('p', 'dsmall', a.errors + ' session(s) ended with an error before a check.'));
   return c;
 }
