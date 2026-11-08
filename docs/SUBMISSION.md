@@ -36,7 +36,7 @@ Honest limits: the faults were injected by us, we have not yet seen a spontaneou
 The lablab.build list has no entry for most of these, so they are named here
 and in the long description instead.
 
-- Vultr Cloud Compute (backend VM) and Vultr Serverless Inference (plan drafting)
+- Vultr Cloud Compute (backend VM) and Vultr Serverless Inference (plan drafting) with the DeepSeek model `deepseek-v4.1-flash-1017`, selected by `VULTR_INFERENCE_MODEL`
 - Salesforce (developer org, REST API, read-only audits)
 - Salesforce Agentforce (second executor agent)
 - Python and FastAPI (backend and web app)
